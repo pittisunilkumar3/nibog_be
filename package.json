@@ -1,0 +1,23 @@
+{
+  "name": "nibog-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop nibog-backend",
+    "pm2:restart": "pm2 restart nibog-backend",
+    "pm2:delete": "pm2 delete nibog-backend",
+    "pm2:logs": "pm2 logs nibog-backend"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mysql2": "^3.6.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "pm2": "^5.3.0"
+  }
+}
