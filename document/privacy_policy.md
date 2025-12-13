@@ -12,10 +12,6 @@ http://localhost:3004/api/privacy-policy
 
 **GET** `/api/privacy-policy`
 
-### Headers
-```
-Authorization: Bearer <JWT_TOKEN>
-```
 
 ### Success Response
 ```

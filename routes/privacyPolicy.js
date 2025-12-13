@@ -6,8 +6,8 @@ const privacyPolicyController = require('../controller/privacyPolicyController')
 
 const { authenticateEmployee } = require('../controller/authMiddleware');
 
-// GET privacy policy (protected)
-router.get('/', authenticateEmployee, privacyPolicyController.getPrivacyPolicy);
+// GET privacy policy (public)
+router.get('/', privacyPolicyController.getPrivacyPolicy);
 
 // PUT privacy policy (protected)
 router.put('/', authenticateEmployee, privacyPolicyController.updatePrivacyPolicy);

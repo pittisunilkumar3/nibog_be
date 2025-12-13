@@ -11,10 +11,6 @@ http://localhost:3004/api/terms
 
 **GET** `/api/terms`
 
-### Headers
-```
-Authorization: Bearer <JWT_TOKEN>
-```
 
 ### Success Response
 ```
