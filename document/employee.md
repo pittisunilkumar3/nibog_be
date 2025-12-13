@@ -1,4 +1,50 @@
+## 5. Change Password (Protected)
+
+**POST** `/api/employee/change-password`
+
+### Headers
+```
+Authorization: Bearer <JWT_TOKEN>
+```
+
+### Request Body (JSON)
+```
+{
+  "oldPassword": "current_password",
+  "newPassword": "new_password"
+}
+```
+
+### Success Response
+```
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+### Error Responses (examples)
+```
+{
+  "success": false,
+  "message": "Old password is incorrect"
+}
+```
+or
+```
+{
+  "success": false,
+  "message": "Employee not found"
+}
+```
+
+**Implementation Note:**
+This endpoint verifies the old password, hashes the new password, and updates it using the model layer (`employeeModel.js`).
+
 # Employee API Documentation
+
+> **Update (Dec 2025):**
+> The employee API now uses a dedicated model layer (`model/employeeModel.js`) for all database operations. Controller files only handle request/response logic and delegate DB access to the model. This improves maintainability and separation of concerns.
 
 ## Base URL
 ```
@@ -12,6 +58,7 @@ Password: superadmin
 ```
 
 ---
+
 
 ## 1. Register Employee
 
@@ -54,6 +101,7 @@ Password: superadmin
 }
 ```
 
+
 ### Success Response
 ```
 {
@@ -62,6 +110,9 @@ Password: superadmin
   "employee_id": 2
 }
 ```
+
+**Implementation Note:**
+The registration logic is handled in the controller, but all database queries (checking for existing employee, inserting new employee) are performed via the model layer (`employeeModel.js`).
 
 ### Error Response (example)
 ```
@@ -85,6 +136,7 @@ Password: superadmin
 }
 ```
 
+
 ### Success Response
 ```
 {
@@ -103,6 +155,9 @@ Password: superadmin
   }
 }
 ```
+
+**Implementation Note:**
+The login endpoint uses the model to fetch employee data by email and validate credentials.
 
 ### Error Response (example)
 ```
@@ -123,6 +178,7 @@ Password: superadmin
 Authorization: Bearer <JWT_TOKEN>
 ```
 
+
 ### Success Response
 ```
 {
@@ -140,6 +196,9 @@ Authorization: Bearer <JWT_TOKEN>
   }
 }
 ```
+
+**Implementation Note:**
+The profile endpoint retrieves employee data using the model by employee ID.
 
 ### Error Response (example)
 ```
@@ -161,6 +220,7 @@ Authorization: Bearer <JWT_TOKEN>
 Authorization: Bearer <JWT_TOKEN>
 ```
 
+
 ### Success Response
 ```
 {
@@ -177,21 +237,13 @@ Authorization: Bearer <JWT_TOKEN>
       "is_superadmin": 1,
       "is_active": 1
     },
-    {
-      "id": 2,
-      "employee_id": "EMP002",
-      "name": "John",
-      "surname": "Doe",
-      "email": "john@example.com",
-      "department": "IT",
-      "designation": "Developer",
-      "is_superadmin": 0,
-      "is_active": 1
-    }
     // ...more employees
   ]
 }
 ```
+
+**Implementation Note:**
+The list endpoint fetches all active employees using the model's list method.
 
 ### Error Response (example)
 ```
@@ -226,8 +278,10 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
+
 ## Notes
 - Default superadmin is created automatically on migration.
 - Passwords are hashed using bcryptjs.
 - JWT token expires in 24 hours.
 - Change `JWT_SECRET` in `.env` for production security.
+- All employee-related database logic is now handled in `model/employeeModel.js` for better code organization and maintainability.
