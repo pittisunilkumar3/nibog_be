@@ -11,3 +11,7 @@ CREATE TABLE IF NOT EXISTS general_settings (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert initial general settings
+INSERT INTO general_settings (site_name, site_tagline, contact_email, contact_phone, address, logo_path, favicon_path)
+VALUES ('Default Site', 'Your site tagline here', 'contact@default.com', '000-000-0000', 'Default address', NULL, NULL);

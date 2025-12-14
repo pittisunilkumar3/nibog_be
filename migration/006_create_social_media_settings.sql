@@ -8,3 +8,12 @@ CREATE TABLE IF NOT EXISTS social_media_settings (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert initial social media settings
+INSERT INTO social_media_settings (facebook_url, instagram_url, linkedin_url, youtube_url)
+VALUES (
+  'https://www.facebook.com/share/1K8H6SPtR5/',
+  'https://www.instagram.com/nibog_100',
+  'https://www.linkedin.com/in/new-india-baby-olympicgames',
+  'https://youtube.com/@newindiababyolympics'
+);
