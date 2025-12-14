@@ -1,14 +1,18 @@
-const partnersRoutes = require('./routes/partners');
-app.use('/api/partners', partnersRoutes);
+
 const express = require('express');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const app = express();
+
+// Middleware to parse JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Initialize and test database connection
 require('./config/config');
 
-
-
+const partnersRoutes = require('./routes/partners');
 const helloworldRoute = require('./routes/helloworld');
 const employeeRoute = require('./routes/employee');
 const privacyPolicyRoute = require('./routes/privacyPolicy');
@@ -20,15 +24,10 @@ const footerSettingsRoute = require('./routes/footerSettings');
 const generalSettingsRoute = require('./routes/generalSettings');
 const cityRoute = require('./routes/city');
 const venueRoute = require('./routes/venue');
-
-const app = express();
-
-// Middleware to parse JSON
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const homepageSectionsRoutes = require('./routes/homepageSections');
 
 // Use routes
-
+app.use('/api/partners', partnersRoutes);
 app.use('/api/helloworld', helloworldRoute);
 app.use('/api/employee', employeeRoute);
 app.use('/api/privacy-policy', privacyPolicyRoute);
@@ -37,7 +36,7 @@ app.use('/api/refund-policy', refundPolicyRoute);
 
 app.use('/api/faq', faqRoute);
 
-const homepageSectionsRoutes = require('./routes/homepageSections');
+
 app.use('/api/homepage-sections', homepageSectionsRoutes);
 
 app.use('/api/social-media-settings', socialMediaSettingsRoute);
