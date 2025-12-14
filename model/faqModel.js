@@ -1,4 +1,3 @@
-
 const { promisePool } = require('../config/config');
 
 const FaqModel = {
@@ -27,6 +26,13 @@ const FaqModel = {
     sql += ' ORDER BY display_priority ASC, created_at DESC';
     const [rows] = await promisePool.query(sql, values);
     return rows;
+  },
+
+  create: async (data) => {
+    const { question, answer, category, display_priority = 1, status = 'Active' } = data;
+    const sql = `INSERT INTO faqs (question, answer, category, display_priority, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`;
+    const [result] = await promisePool.execute(sql, [question, answer, category, display_priority, status]);
+    return { id: result.insertId, ...data };
   },
 
   update: async (id, data) => {

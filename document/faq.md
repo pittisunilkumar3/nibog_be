@@ -1,3 +1,46 @@
+# Create FAQ
+**POST** `/api/faq/faqs`
+
+**Description:** Create a new FAQ. Requires employee authentication.
+
+**Headers:**
+```
+Authorization: Bearer <employee_token>
+Content-Type: application/json
+```
+
+**Request Body Example:**
+```json
+{
+  "question": "How do I register?",
+  "answer": "Click the register button and fill out the form.",
+  "category": "General",
+  "display_priority": 1,
+  "status": "Active"
+}
+```
+
+**Success Response:**
+```json
+{
+  "message": "FAQ created successfully",
+  "faq": {
+    "id": 5,
+    "question": "How do I register?",
+    "answer": "Click the register button and fill out the form.",
+    "category": "General",
+    "display_priority": 1,
+    "status": "Active"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "message": "Question and answer are required."
+}
+```
 
 # FAQ API Documentation
 

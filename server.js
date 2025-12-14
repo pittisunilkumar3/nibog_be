@@ -22,6 +22,7 @@ const venueRoute = require('./routes/venue');
 const partnersRoute = require('./routes/partners');
 const homepageSectionsRoute = require('./routes/homepageSections');
 const emailSettingsRoute = require('./routes/emailSettings');
+const userRoute = require('./routes/user');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/venue', venueRoute);
 app.use('/api/partners', partnersRoute);
 app.use('/api/homepage-sections', homepageSectionsRoute);
 app.use('/api/email-settings', emailSettingsRoute);
+app.use('/api/user', userRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {

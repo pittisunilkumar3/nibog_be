@@ -54,9 +54,23 @@ const deleteFaq = async (req, res) => {
   }
 };
 
+const createFaq = async (req, res) => {
+  try {
+    const { question, answer, category, display_priority, status } = req.body;
+    if (!question || !answer) {
+      return res.status(400).json({ message: 'Question and answer are required.' });
+    }
+    const faq = await FaqModel.create({ question, answer, category, display_priority, status });
+    res.status(201).json({ message: 'FAQ created successfully', faq });
+  } catch (err) {
+    res.status(500).json({ message: 'Error creating FAQ', error: err.message });
+  }
+};
+
 module.exports = {
   editFaq,
   deleteFaq,
   getFaq,
-  listFaqs
+  listFaqs,
+  createFaq
 };
