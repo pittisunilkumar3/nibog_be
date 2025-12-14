@@ -15,6 +15,9 @@ const refundPolicyRoute = require('./routes/refundPolicy');
 const faqRoute = require('./routes/faq');
 const socialMediaSettingsRoute = require('./routes/socialMediaSettings');
 const footerSettingsRoute = require('./routes/footerSettings');
+const generalSettingsRoute = require('./routes/generalSettings');
+const cityRoute = require('./routes/city');
+const venueRoute = require('./routes/venue');
 
 const app = express();
 
@@ -23,7 +26,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Use routes
-
 
 app.use('/api/helloworld', helloworldRoute);
 app.use('/api/employee', employeeRoute);
@@ -35,10 +37,6 @@ app.use('/api/faq', faqRoute);
 
 app.use('/api/social-media-settings', socialMediaSettingsRoute);
 app.use('/api/footer-settings', footerSettingsRoute);
-
-const generalSettingsRoute = require('./routes/generalSettings');
-const cityRoute = require('./routes/city');
-const venueRoute = require('./routes/venue');
 
 
 app.use('/api/general-settings', generalSettingsRoute);
