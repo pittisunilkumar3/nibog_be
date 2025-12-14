@@ -24,6 +24,8 @@ const homepageSectionsRoute = require('./routes/homepageSections');
 const emailSettingsRoute = require('./routes/emailSettings');
 const userRoute = require('./routes/user');
 
+const eventRoutes = require('./routes/event');
+
 const app = express();
 
 // Middleware to parse JSON
@@ -49,6 +51,8 @@ app.use('/api/partners', partnersRoute);
 app.use('/api/homepage-sections', homepageSectionsRoute);
 app.use('/api/email-settings', emailSettingsRoute);
 app.use('/api/user', userRoute);
+
+app.use('/api/events', eventRoutes);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
