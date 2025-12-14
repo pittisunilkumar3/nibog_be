@@ -1,3 +1,5 @@
+const babyGamesRoutes = require('./routes/babyGames');
+app.use('/api/baby-games', babyGamesRoutes);
 
 const express = require('express');
 const dotenv = require('dotenv');
