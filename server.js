@@ -35,6 +35,9 @@ app.use('/api/refund-policy', refundPolicyRoute);
 
 app.use('/api/faq', faqRoute);
 
+const homepageSectionsRoutes = require('./routes/homepageSections');
+app.use('/api/homepage-sections', homepageSectionsRoutes);
+
 app.use('/api/social-media-settings', socialMediaSettingsRoute);
 app.use('/api/footer-settings', footerSettingsRoute);
 
