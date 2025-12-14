@@ -35,6 +35,9 @@ app.use('/api/faq', faqRoute);
 
 app.use('/api/social-media-settings', socialMediaSettingsRoute);
 app.use('/api/footer-settings', footerSettingsRoute);
+const generalSettingsRoute = require('./routes/generalSettings');
+
+app.use('/api/general-settings', generalSettingsRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
