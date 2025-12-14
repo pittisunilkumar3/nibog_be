@@ -8,7 +8,7 @@ const PrivacyPolicyModel = {
   },
   async updatePolicy(text) {
     // Insert new version (history), or update if only one row is needed
-    const [result] = await promisePool.query('INSERT INTO privacy_policy (policy_text, updated_at) VALUES (?, NOW())', [text]);
+    const [result] = await promisePool.query('INSERT INTO privacy_policy (html_content) VALUES (?)', [text]);
     return result;
   }
 };
