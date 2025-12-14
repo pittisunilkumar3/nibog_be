@@ -1,3 +1,5 @@
+const partnersRoutes = require('./routes/partners');
+app.use('/api/partners', partnersRoutes);
 const express = require('express');
 const dotenv = require('dotenv');
 dotenv.config();
