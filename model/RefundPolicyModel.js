@@ -7,8 +7,16 @@ const RefundPolicyModel = {
     return rows[0] || null;
   },
   async updatePolicy(text) {
-    const [result] = await promisePool.query('INSERT INTO refund_policy (policy_text, updated_at) VALUES (?, NOW())', [text]);
-    return result;
+    // Update the latest row if exists, otherwise insert
+    const [rows] = await promisePool.query('SELECT id FROM refund_policy ORDER BY id DESC LIMIT 1');
+    if (rows.length > 0) {
+      const id = rows[0].id;
+      const [result] = await promisePool.query('UPDATE refund_policy SET html_content = ? WHERE id = ?', [text, id]);
+      return result;
+    } else {
+      const [result] = await promisePool.query('INSERT INTO refund_policy (html_content) VALUES (?)', [text]);
+      return result;
+    }
   }
 };
 
