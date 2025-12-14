@@ -13,6 +13,8 @@ const privacyPolicyRoute = require('./routes/privacyPolicy');
 const termsRoute = require('./routes/terms');
 const refundPolicyRoute = require('./routes/refundPolicy');
 const faqRoute = require('./routes/faq');
+const socialMediaSettingsRoute = require('./routes/socialMediaSettings');
+const footerSettingsRoute = require('./routes/footerSettings');
 
 const app = express();
 
@@ -28,7 +30,11 @@ app.use('/api/employee', employeeRoute);
 app.use('/api/privacy-policy', privacyPolicyRoute);
 app.use('/api/terms', termsRoute);
 app.use('/api/refund-policy', refundPolicyRoute);
+
 app.use('/api/faq', faqRoute);
+
+app.use('/api/social-media-settings', socialMediaSettingsRoute);
+app.use('/api/footer-settings', footerSettingsRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
