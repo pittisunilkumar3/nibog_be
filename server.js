@@ -21,6 +21,7 @@ const babyGamesRoute = require('./routes/babyGames');
 const venueRoute = require('./routes/venue');
 const partnersRoute = require('./routes/partners');
 const homepageSectionsRoute = require('./routes/homepageSections');
+const emailSettingsRoute = require('./routes/emailSettings');
 
 const app = express();
 
@@ -45,8 +46,11 @@ app.use('/api/baby-games', babyGamesRoute);
 app.use('/api/venue', venueRoute);
 app.use('/api/partners', partnersRoute);
 app.use('/api/homepage-sections', homepageSectionsRoute);
+app.use('/api/email-settings', emailSettingsRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+

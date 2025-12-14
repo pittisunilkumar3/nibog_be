@@ -1,3 +1,6 @@
+const CityModel = require('../model/cityModel');
+
+
 // List all cities with their venues and total venues
 const listCitiesWithVenues = async (req, res) => {
   try {
@@ -7,7 +10,7 @@ const listCitiesWithVenues = async (req, res) => {
     res.status(500).json({ message: 'Error fetching cities with venues', error: err.message });
   }
 };
-const CityModel = require('../model/cityModel');
+
 
 // List all cities
 const listCities = async (req, res) => {
