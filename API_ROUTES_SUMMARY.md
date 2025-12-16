@@ -20,6 +20,7 @@
 | venue.js | `/api/venue` | ✅ Implemented | [venue.md](./document/venue.md) |
 | partners.js | `/api/partners` | ✅ Implemented | [partners.md](./document/partners.md) |
 | homepageSections.js | `/api/homepage-sections` | ✅ Implemented | [homepage_sections.md](./document/homepage_sections.md) |
+| addons.js | `/api/addons` | ✅ Implemented | [addons.md](./document/addons.md) |
 
 ## Quick API Reference
 
