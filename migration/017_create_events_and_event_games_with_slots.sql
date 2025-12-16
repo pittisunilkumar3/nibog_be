@@ -1,6 +1,6 @@
 -- Migration: Create events and event_games_with_slots tables
 
-CREATE TABLE `events` (
+CREATE TABLE IF NOT EXISTS `events` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE `events` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-CREATE TABLE `event_games_with_slots` (
+CREATE TABLE IF NOT EXISTS `event_games_with_slots` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `event_id` int(11) NOT NULL,
   `game_id` int(11) NOT NULL,
