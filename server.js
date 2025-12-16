@@ -25,6 +25,7 @@ const emailSettingsRoute = require('./routes/emailSettings');
 const userRoute = require('./routes/user');
 
 const eventRoutes = require('./routes/event');
+const addonsRoute = require('./routes/addons');
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/email-settings', emailSettingsRoute);
 app.use('/api/user', userRoute);
 
 app.use('/api/events', eventRoutes);
+app.use('/api/addons', addonsRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
