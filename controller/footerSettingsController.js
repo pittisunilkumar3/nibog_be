@@ -26,8 +26,21 @@ const updateSettings = async (req, res) => {
     res.status(500).json({ message: 'Error updating settings', error: err.message });
   }
 };
+// Get footer settings with social links
+const getSettingsWithSocialLinks = async (req, res) => {
+  try {
+    const settings = await FooterSettingsModel.getWithSocialLinks();
+    if (!settings) {
+      return res.status(404).json({ message: 'Settings not found' });
+    }
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching settings with social links', error: err.message });
+  }
+};
 
 module.exports = {
   getSettings,
   updateSettings
+  ,getSettingsWithSocialLinks
 };

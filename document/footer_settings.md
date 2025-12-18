@@ -1,3 +1,31 @@
+### 1a. Get Footer Settings with Social Links
+**GET** `/api/footer-settings/with-social`
+
+**Description:**
+Fetch the current footer settings along with social media links in a single response.
+
+**Example Request:**
+```
+curl -X GET "http://localhost:3004/api/footer-settings/with-social"
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "company_name": "Your Company Name",
+  "company_description": "Description here...",
+  "address": "Address here...",
+  "phone": "1234567890",
+  "email": "info@example.com",
+  "newsletter_enabled": 1,
+  "copyright_text": "Copyright © 2025",
+  "facebook_url": "https://www.facebook.com/share/1K8H6SPtR5/",
+  "instagram_url": "https://www.instagram.com/nibog_100",
+  "linkedin_url": "https://www.linkedin.com/in/new-india-baby-olympicgames",
+  "youtube_url": "https://youtube.com/@newindiababyolympics"
+}
+```
 # Footer Settings API Documentation
 
 ## Base URL
