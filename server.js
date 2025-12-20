@@ -22,6 +22,7 @@ const venueRoute = require('./routes/venue');
 const partnersRoute = require('./routes/partners');
 const homepageSectionsRoute = require('./routes/homepageSections');
 const emailSettingsRoute = require('./routes/emailSettings');
+const testimonialsRoute = require('./routes/testimonials');
 const userRoute = require('./routes/user');
 
 const eventRoutes = require('./routes/event');
@@ -51,6 +52,7 @@ app.use('/api/venue', venueRoute);
 app.use('/api/partners', partnersRoute);
 app.use('/api/homepage-sections', homepageSectionsRoute);
 app.use('/api/email-settings', emailSettingsRoute);
+app.use('/api/testimonials', testimonialsRoute);
 app.use('/api/user', userRoute);
 
 app.use('/api/events', eventRoutes);
