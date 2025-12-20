@@ -71,3 +71,15 @@ exports.getProfile = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch profile', error: error.message });
   }
 };
+exports.editUser = async (req, res) => {
+  try {
+    const user_id = req.params.id;
+    const data = req.body;
+    if (!data || Object.keys(data).length === 0) return res.status(400).json({ success: false, message: 'No data to update.' });
+    const affected = await UserModel.updateUserById(user_id, data);
+    if (!affected) return res.status(404).json({ success: false, message: 'User not found or no changes.' });
+    res.json({ success: true, message: 'User updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update user', error: error.message });
+  }
+};

@@ -36,6 +36,19 @@ const UserModel = {
     );
     return this.getById(result.insertId);
   },
+  async updateUserById(user_id, data) {
+    const fields = [];
+    const values = [];
+    for (const key in data) {
+      fields.push(`${key} = ?`);
+      values.push(data[key]);
+    }
+    if (!fields.length) return 0;
+    values.push(user_id);
+    const sql = `UPDATE users SET ${fields.join(', ')} WHERE user_id = ?`;
+    const [result] = await promisePool.execute(sql, values);
+    return result.affectedRows;
+  },
   async updateLastLogin(user_id) {
     await promisePool.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = ?', [user_id]);
   }

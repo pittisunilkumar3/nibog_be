@@ -242,6 +242,37 @@ curl -X GET "http://localhost:3004/api/user/1"
 ```
 
 ---
+### 6. Edit User (Update by ID)
+**PUT** `/api/user/{id}`
+
+**Description:**
+Update user details by user ID. Only fields provided in the body will be updated.
+
+**Example Request:**
+```
+curl -X PUT "http://localhost:3004/api/user/1" \
+  -H "Content-Type: application/json" \
+  -d '{ "full_name": "John Updated", "city_id": 2, "is_active": 0 }'
+```
+
+**Request Body Example:**
+```json
+{
+  "full_name": "John Updated",
+  "city_id": 2,
+  "is_active": 0
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User updated successfully"
+}
+```
+
+---
 
 ## JWT Authentication
 - Use the token from the login response as a Bearer token in the `Authorization` header for protected endpoints.

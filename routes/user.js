@@ -15,5 +15,8 @@ router.get('/list', userController.listAll);
 
 // Get single user by id with city/state
 router.get('/:id', userController.getSingle);
+const { authenticateUserOrSuperadmin } = require('../controller/authMiddleware');
+// Edit user by id (update)
+router.put('/:id', authenticateUserOrSuperadmin, userController.editUser);
 
 module.exports = router;
