@@ -1,5 +1,15 @@
 const CityModel = require('../model/cityModel');
 
+// List all events for a city
+const getEventsByCity = async (req, res) => {
+  try {
+    const cityId = req.params.id;
+    const events = await CityModel.getEventsByCity(cityId);
+    res.json({ success: true, data: events });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching events for city', error: err.message });
+  }
+};
 
 // List all cities with their venues and total venues
 const listCitiesWithVenues = async (req, res) => {
@@ -75,5 +85,6 @@ module.exports = {
   createCity,
   updateCity,
   deleteCity,
-  listCitiesWithVenues
+  listCitiesWithVenues,
+  getEventsByCity
 };

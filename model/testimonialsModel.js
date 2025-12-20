@@ -4,18 +4,32 @@ const TestimonialsModel = {
   async list(filters = {}) {
     const conditions = [];
     const values = [];
-    if (filters.event_id) { conditions.push('event_id = ?'); values.push(filters.event_id); }
-    if (filters.city_id) { conditions.push('city_id = ?'); values.push(filters.city_id); }
-    if (filters.status) { conditions.push('status = ?'); values.push(filters.status); }
+    if (filters.event_id) { conditions.push('t.event_id = ?'); values.push(filters.event_id); }
+    if (filters.city_id) { conditions.push('t.city_id = ?'); values.push(filters.city_id); }
+    if (filters.status) { conditions.push('t.status = ?'); values.push(filters.status); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const sql = `SELECT * FROM testimonials ${where} ORDER BY priority DESC, submitted_at DESC`;
+    const sql = `
+      SELECT t.*, c.city_name, e.title AS event_name
+      FROM testimonials t
+      LEFT JOIN cities c ON t.city_id = c.id
+      LEFT JOIN events e ON t.event_id = e.id
+      ${where}
+      ORDER BY t.priority DESC, t.submitted_at DESC
+    `;
     const [rows] = await promisePool.query(sql, values);
     return rows;
   },
 
   async get(id) {
-    const [rows] = await promisePool.query('SELECT * FROM testimonials WHERE id = ?', [id]);
+    const sql = `
+      SELECT t.*, c.city_name, e.title AS event_name
+      FROM testimonials t
+      LEFT JOIN cities c ON t.city_id = c.id
+      LEFT JOIN events e ON t.event_id = e.id
+      WHERE t.id = ?
+    `;
+    const [rows] = await promisePool.query(sql, [id]);
     return rows[0] || null;
   },
 

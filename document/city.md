@@ -7,6 +7,45 @@ http://localhost:3004/api/city
 
 ## Endpoints
 
+## City-wise Events
+
+### List All Events for a City
+**GET** `/api/city/{city_id}/events`
+
+**Description:**
+Fetch all events for a given city, including venue and city names.
+
+**Example Request:**
+```
+curl -X GET "http://localhost:3004/api/city/1/events"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 10,
+      "title": "Winter Carnival 2025",
+      "description": "A fun event for all ages!",
+      "city_id": 1,
+      "city_name": "Mumbai",
+      "venue_id": 2,
+      "venue_name": "Juhu Beach",
+      "event_date": "2025-12-31",
+      "status": "Published",
+      "is_active": 1,
+      "image_url": null,
+      "priority": 1,
+      "created_at": "2025-12-01T10:00:00.000Z",
+      "updated_at": "2025-12-10T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
 
 ### 1. List All Cities
 **GET** `/api/city/`

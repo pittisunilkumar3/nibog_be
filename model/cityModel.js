@@ -58,6 +58,21 @@ const CityModel = {
     const [result] = await promisePool.execute(sql, [id]);
     return result;
   }
+  ,
+
+    // Get all events for a given city
+    async getEventsByCity(cityId) {
+      const sql = `
+        SELECT e.*, v.venue_name, c.city_name
+        FROM events e
+        LEFT JOIN venues v ON e.venue_id = v.id
+        LEFT JOIN cities c ON e.city_id = c.id
+        WHERE e.city_id = ?
+        ORDER BY e.event_date DESC, e.id DESC
+      `;
+      const [rows] = await promisePool.query(sql, [cityId]);
+      return rows;
+    }
 };
 
 module.exports = CityModel;

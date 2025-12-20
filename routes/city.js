@@ -12,6 +12,9 @@ router.get('/with-venues/list', listCitiesWithVenues);
 // Get a single city by id (public)
 router.get('/:id', getCity);
 
+// Get all events for a city (public)
+router.get('/:id/events', require('../controller/cityController').getEventsByCity);
+
 // Create a new city (protected)
 router.post('/', authenticateEmployee, createCity);
 
