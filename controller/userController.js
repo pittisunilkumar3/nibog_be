@@ -1,3 +1,21 @@
+exports.listAll = async (req, res) => {
+  try {
+    const users = await UserModel.listAllWithCity();
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch users', error: error.message });
+  }
+};
+
+exports.getSingle = async (req, res) => {
+  try {
+    const user = await UserModel.getById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+    res.json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch user', error: error.message });
+  }
+};
 const UserModel = require('../model/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');

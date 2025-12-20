@@ -1,6 +1,15 @@
 const { promisePool } = require('../config/config');
 
 const UserModel = {
+  async listAllWithCity() {
+    const [rows] = await promisePool.query(`
+      SELECT u.*, c.city_name, c.state
+      FROM users u
+      LEFT JOIN cities c ON u.city_id = c.id
+      ORDER BY u.user_id ASC
+    `);
+    return rows;
+  },
   async getByEmail(email) {
     const [rows] = await promisePool.query(`
       SELECT u.*, c.city_name, c.state
