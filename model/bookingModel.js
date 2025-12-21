@@ -31,9 +31,14 @@ const BookingModel = {
       const bookingId = bookingRes.insertId;
       // Insert booking_games (multiple games/slots for each child)
       for (const bg of data.booking_games) {
+        // Map child_id from request (1-based index) to actual child ID from database
+        const actualChildId = childIds[bg.child_id - 1];
+        if (!actualChildId) {
+          throw new Error(`Invalid child_id: ${bg.child_id}. Must be between 1 and ${childIds.length}`);
+        }
         await conn.query(
           'INSERT INTO booking_games (booking_id, child_id, game_id, slot_id, game_price) VALUES (?, ?, ?, ?, ?)',
-          [bookingId, bg.child_id, bg.game_id, bg.slot_id, bg.game_price || 0]
+          [bookingId, actualChildId, bg.game_id, bg.slot_id, bg.game_price || 0]
         );
       }
       // Insert payment record

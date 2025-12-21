@@ -9,6 +9,9 @@ router.get('/', listCities);
 // List all cities with their venues and total venues (public)
 router.get('/with-venues/list', listCitiesWithVenues);
 
+// List all cities with events, games and slots for booking (public)
+router.get('/booking-info/list', require('../controller/cityController').listCitiesWithEventsAndGames);
+
 // Get a single city by id (public)
 router.get('/:id', getCity);
 

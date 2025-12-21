@@ -27,6 +27,7 @@ const userRoute = require('./routes/user');
 
 const eventRoutes = require('./routes/event');
 const addonsRoute = require('./routes/addons');
+const bookingRoute = require('./routes/booking');
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use('/api/user', userRoute);
 
 app.use('/api/events', eventRoutes);
 app.use('/api/addons', addonsRoute);
+app.use('/api/bookings', bookingRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {

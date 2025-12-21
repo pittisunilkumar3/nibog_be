@@ -21,6 +21,16 @@ const listCitiesWithVenues = async (req, res) => {
   }
 };
 
+// List all cities with events, games and slots for booking
+const listCitiesWithEventsAndGames = async (req, res) => {
+  try {
+    const cities = await CityModel.listCitiesWithEventsAndGames();
+    res.json({ success: true, data: cities });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching cities with events and games', error: err.message });
+  }
+};
+
 
 // List all cities
 const listCities = async (req, res) => {
@@ -86,5 +96,6 @@ module.exports = {
   updateCity,
   deleteCity,
   listCitiesWithVenues,
-  getEventsByCity
+  getEventsByCity,
+  listCitiesWithEventsAndGames
 };
