@@ -94,7 +94,7 @@ const CityModel = {
         ORDER BY e.event_date ASC, e.priority ASC
       `);
 
-      // Get all event games with slots
+      // Get all event games with slots (only active)
       const [eventGames] = await promisePool.query(`
         SELECT 
           eg.id as slot_id,
@@ -118,7 +118,7 @@ const CityModel = {
           bg.categories
         FROM event_games_with_slots eg
         LEFT JOIN baby_games bg ON eg.game_id = bg.id
-        WHERE eg.is_active = 1
+        WHERE eg.is_active = 1 AND bg.is_active = 1
         ORDER BY eg.start_time ASC
       `);
 
@@ -145,7 +145,8 @@ const CityModel = {
       });
 
       eventGames.forEach(eg => {
-        if (eventMap[eg.event_id]) {
+        // Only include active slots
+        if (eventMap[eg.event_id] && eg.is_active === 1) {
           const bookedCount = bookingCountMap[eg.slot_id] || 0;
           const availableSlots = eg.max_participants - bookedCount;
           

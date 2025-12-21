@@ -14,32 +14,31 @@ const BookingModel = {
         );
         parentId = parentRes.insertId;
       }
-      // Insert children
-      const childIds = [];
-      for (const child of data.children) {
-        const [childRes] = await conn.query(
-          'INSERT INTO children (parent_id, full_name, date_of_birth, gender, school_name) VALUES (?, ?, ?, ?, ?)',
-          [parentId, child.full_name, child.date_of_birth, child.gender, child.school_name]
-        );
-        childIds.push(childRes.insertId);
-      }
       // Insert booking
       const [bookingRes] = await conn.query(
         'INSERT INTO bookings (parent_id, event_id, booking_ref, status, total_amount, payment_method, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [parentId, data.event_id, data.booking_ref, data.status || 'Pending', data.total_amount || 0, data.payment_method, data.payment_status || 'Pending']
       );
       const bookingId = bookingRes.insertId;
-      // Insert booking_games (multiple games/slots for each child)
-      for (const bg of data.booking_games) {
-        // Map child_id from request (1-based index) to actual child ID from database
-        const actualChildId = childIds[bg.child_id - 1];
-        if (!actualChildId) {
-          throw new Error(`Invalid child_id: ${bg.child_id}. Must be between 1 and ${childIds.length}`);
-        }
-        await conn.query(
-          'INSERT INTO booking_games (booking_id, child_id, game_id, slot_id, game_price) VALUES (?, ?, ?, ?, ?)',
-          [bookingId, actualChildId, bg.game_id, bg.slot_id, bg.game_price || 0]
+      
+      // Insert children and their booking_games together
+      for (const child of data.children) {
+        // Create child
+        const [childRes] = await conn.query(
+          'INSERT INTO children (parent_id, full_name, date_of_birth, gender, school_name) VALUES (?, ?, ?, ?, ?)',
+          [parentId, child.full_name, child.date_of_birth, child.gender, child.school_name]
         );
+        const childId = childRes.insertId;
+        
+        // Create booking_games for this child (if any)
+        if (child.booking_games && Array.isArray(child.booking_games)) {
+          for (const game of child.booking_games) {
+            await conn.query(
+              'INSERT INTO booking_games (booking_id, child_id, game_id, slot_id, game_price) VALUES (?, ?, ?, ?, ?)',
+              [bookingId, childId, game.game_id, game.slot_id, game.game_price || 0]
+            );
+          }
+        }
       }
       // Insert payment record
       let paymentId = null;

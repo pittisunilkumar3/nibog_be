@@ -13,9 +13,16 @@ exports.createBooking = async (req, res) => {
     if (!req.body.children || req.body.children.length === 0) {
       return res.status(400).json({ error: 'At least one child is required' });
     }
-    if (!req.body.booking_games || req.body.booking_games.length === 0) {
-      return res.status(400).json({ error: 'At least one booking game is required' });
+    
+    // Validate that at least one child has booking_games
+    const hasBookingGames = req.body.children.some(child => 
+      child.booking_games && Array.isArray(child.booking_games) && child.booking_games.length > 0
+    );
+    
+    if (!hasBookingGames) {
+      return res.status(400).json({ error: 'At least one child must have booking_games' });
     }
+    
     if (!req.body.event_id) {
       return res.status(400).json({ error: 'event_id is required' });
     }
