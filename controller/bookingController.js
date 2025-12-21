@@ -71,3 +71,56 @@ exports.getUserProfileWithBookings = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/**
+ * Get all bookings with complete details
+ * Returns list of all bookings with parent, event, children, games, and payments
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * GET /api/bookings
+ */
+exports.getAllBookings = async (req, res) => {
+  try {
+    const bookings = await BookingModel.getAllBookings();
+    
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Get single booking details by booking ID
+ * Returns complete booking info with parent, event, children, games, and payments
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * GET /api/bookings/:id
+ */
+exports.getBookingById = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    
+    if (!bookingId) {
+      return res.status(400).json({ error: 'Booking ID is required' });
+    }
+
+    const booking = await BookingModel.getBookingById(bookingId);
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: booking
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -3,7 +3,236 @@
 ## Endpoints Overview
 
 1. [Create Booking](#create-booking) - `POST /api/bookings`
-2. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
+2. [Get All Bookings](#get-all-bookings) - `GET /api/bookings`
+3. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
+4. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
+
+---
+
+## Get All Bookings
+
+**GET** `/api/bookings`
+
+Get a list of all bookings with complete details including parent info, event details, children, games, and payment information.
+
+### Request Example
+```bash
+GET /api/bookings
+```
+
+### Success Response
+
+**200 OK**
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "id": 12,
+      "booking_ref": "NEW2025123456",
+      "status": "Confirmed",
+      "total_amount": "3598.00",
+      "payment_method": null,
+      "payment_status": "Pending",
+      "booking_date": "2025-12-21T12:14:47.000Z",
+      "parent": {
+        "id": 12,
+        "name": "Sarah Williams",
+        "email": "sarah.w@test.com",
+        "phone": "9998887776",
+        "user_id": null
+      },
+      "event": {
+        "id": 5,
+        "name": "Summer Fun Event",
+        "date": "2025-12-31",
+        "description": "Exciting games for children",
+        "image_url": "event.jpg",
+        "status": "Published",
+        "venue": {
+          "id": 2,
+          "name": "Kids Arena",
+          "address": "123 Test St",
+          "contact": "1234567890",
+          "city": "Test City",
+          "state": "Test State"
+        }
+      },
+      "children": [
+        {
+          "child_id": 14,
+          "full_name": "Emma Williams",
+          "date_of_birth": "2019-04-10",
+          "gender": "Female",
+          "school_name": "Green Valley School",
+          "booking_games": [
+            {
+              "booking_game_id": 12,
+              "game_price": "1799.00",
+              "game_id": 1,
+              "game_name": "Test Game",
+              "game_description": "Test game description",
+              "min_age": 1,
+              "max_age": 101,
+              "game_image_url": "game.png",
+              "slot_id": 8,
+              "slot_start_time": "10:00:00",
+              "slot_end_time": "11:30:00",
+              "slot_custom_title": "Test Game"
+            }
+          ]
+        }
+      ],
+      "payments": [
+        {
+          "payment_id": 7,
+          "transaction_id": "TXN555444333",
+          "amount": "3598.00",
+          "payment_method": "UPI",
+          "payment_status": "Paid",
+          "payment_date": "2025-12-21T12:14:47.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Features
+- Returns all bookings ordered by creation date (newest first)
+- Complete parent information with contact details
+- Full event details with venue information
+- All children enrolled in each booking
+- Game and slot details for each child
+- Payment records for each booking
+- Total count of bookings
+
+---
+
+## Get Single Booking
+
+**GET** `/api/bookings/:id`
+
+Get detailed information for a specific booking by its ID.
+
+### URL Parameters
+- `id` (integer, required) - The booking ID
+
+### Request Example
+```bash
+GET /api/bookings/12
+```
+
+### Success Response
+
+**200 OK**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 12,
+    "booking_ref": "NEW2025123456",
+    "status": "Confirmed",
+    "total_amount": "3598.00",
+    "payment_method": null,
+    "payment_status": "Pending",
+    "booking_date": "2025-12-21T12:14:47.000Z",
+    "updated_at": "2025-12-21T12:14:47.000Z",
+    "parent": {
+      "id": 12,
+      "name": "Sarah Williams",
+      "email": "sarah.w@test.com",
+      "phone": "9998887776",
+      "user_id": null
+    },
+    "event": {
+      "id": 5,
+      "name": "Summer Fun Event",
+      "date": "2025-12-31",
+      "description": "Exciting games for children",
+      "image_url": "event.jpg",
+      "status": "Published",
+      "venue": {
+        "id": 2,
+        "name": "Kids Arena",
+        "address": "123 Test St",
+        "contact": "1234567890",
+        "city": "Test City",
+        "state": "Test State"
+      }
+    },
+    "children": [
+      {
+        "child_id": 14,
+        "full_name": "Emma Williams",
+        "date_of_birth": "2019-04-10",
+        "gender": "Female",
+        "school_name": "Green Valley School",
+        "created_at": "2025-12-21T12:14:47.000Z",
+        "updated_at": "2025-12-21T12:14:47.000Z",
+        "booking_games": [
+          {
+            "booking_game_id": 12,
+            "game_price": "1799.00",
+            "booked_at": "2025-12-21T12:14:47.000Z",
+            "game_id": 1,
+            "game_name": "Test Game",
+            "game_description": "Test game description",
+            "min_age": 1,
+            "max_age": 101,
+            "duration_minutes": 15,
+            "game_image_url": "game.png",
+            "slot_id": 8,
+            "slot_start_time": "10:00:00",
+            "slot_end_time": "11:30:00",
+            "slot_custom_title": "Test Game",
+            "slot_custom_description": "Custom slot description",
+            "slot_custom_price": "1799.00",
+            "slot_max_participants": 12
+          }
+        ]
+      }
+    ],
+    "payments": [
+      {
+        "payment_id": 7,
+        "transaction_id": "TXN555444333",
+        "amount": "3598.00",
+        "payment_method": "UPI",
+        "payment_status": "Paid",
+        "payment_date": "2025-12-21T12:14:47.000Z",
+        "payment_updated_at": "2025-12-21T12:14:47.000Z"
+      }
+    ]
+  }
+}
+```
+
+### Error Responses
+
+**404 Not Found**
+```json
+{
+  "error": "Booking not found"
+}
+```
+
+**400 Bad Request**
+```json
+{
+  "error": "Booking ID is required"
+}
+```
+
+### Features
+- Complete booking information with timestamps
+- Parent details with user_id link
+- Full event and venue details
+- All children with their personal information
+- Detailed game information including age ranges and duration
+- Complete slot information with timings and capacity
+- All payment records with transaction details
 
 ---
 
