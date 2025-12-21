@@ -1,144 +1,17 @@
-# Booking API Documentation
+# User Profile with Bookings API
 
-## Endpoints Overview
-
-1. [Create Booking](#create-booking) - `POST /api/bookings`
-2. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
-
----
-
-## Create Booking
-
-**POST** `/api/bookings`
-
-Create a new booking with parent, children, and multiple games/slots per child.
-
-
-### Request Body Example
-```json
-{
-  "parent_name": "Parent Name",
-  "email": "parent@email.com",
-  "phone": "9876543210",
-  "event_id": 1,
-  "booking_ref": "MAN2025123456",
-  "status": "Pending",
-  "total_amount": 998.00,
-  "children": [
-    {
-      "full_name": "Child One",
-      "date_of_birth": "2023-01-01",
-      "gender": "Male",
-      "school_name": "ABC School",
-      "booking_games": [
-        {
-          "game_id": 1,
-          "slot_id": 8,
-          "game_price": 499.00
-        }
-      ]
-    },
-    {
-      "full_name": "Child Two",
-      "date_of_birth": "2021-05-10",
-      "gender": "Female",
-      "school_name": "XYZ School",
-      "booking_games": [
-        {
-          "game_id": 1,
-          "slot_id": 9,
-          "game_price": 499.00
-        }
-      ]
-    }
-  ],
-  "payment": {
-    "transaction_id": "TXN123456789",
-    "amount": 998.00,
-    "payment_method": "Cash",
-    "payment_status": "Paid"
-  }
-}
-```
-
-
-### Success Response
-- **201 Created**
-```json
-{
-  "message": "Booking created successfully",
-  "booking_id": 123,
-  "payment_id": 456
-}
-```
-
-### Error Response
-- **400 Bad Request**
-- **500 Internal Server Error**
-
-### Notes
-- All children array is required (minimum 1 child).
-- At least one child must have booking_games array with games/slots.
-- Each child's booking_games array contains their games and time slots.
-- **No need to pass child_id** - The API automatically uses the database-generated child ID.
-- Parent is automatically created in the `parents` table with the provided details.
-- Children are automatically created in the `children` table with the provided details.
-- After each child is created, their booking_games are linked using the auto-generated child_id.
-- The `payment` object is optional but recommended for payment record creation.
-
-### Data Flow
-1. API creates parent record → gets `parent_id` from database
-2. For each child in the array:
-   - Creates child record → gets `child_id` from database
-   - Creates booking_games for that child using the auto-generated `child_id`
-3. All records are properly linked with correct foreign keys
-
-### Example: Multiple Games for One Child
-```json
-{
-  "children": [
-    {
-      "full_name": "Alice Johnson",
-      "date_of_birth": "2020-01-01",
-      "gender": "Female",
-      "school_name": "ABC School",
-      "booking_games": [
-        {
-          "game_id": 1,
-          "slot_id": 8,
-          "game_price": 1799.00
-        },
-        {
-          "game_id": 1,
-          "slot_id": 9,
-          "game_price": 1799.00
-        }
-      ]
-    }
-  ]
-}
-```
-This will book 2 different time slots for Alice.
-
----
-
-## Get User Profile with Bookings
-
+## Endpoint
 **GET** `/api/bookings/user/:userId`
 
+## Description
 Retrieves complete user profile information along with all booking details including parent information, children, games, slots, and payment information based on user ID.
 
-### URL Parameters
+## URL Parameters
 - `userId` (integer, required) - The ID of the user
 
-### Request Example
-```bash
-GET /api/bookings/user/1
-```
+## Response Format
 
-### Success Response
-
-**200 OK**
+### Success Response (200 OK)
 ```json
 {
   "success": true,
@@ -157,6 +30,8 @@ GET /api/bookings/user/1
       "terms_accepted_at": "2024-01-15T10:30:00.000Z",
       "is_active": 1,
       "is_locked": 0,
+      "locked_until": null,
+      "deactivated_at": null,
       "created_at": "2024-01-15T10:30:00.000Z",
       "updated_at": "2024-01-15T10:30:00.000Z",
       "last_login_at": "2024-01-20T14:25:00.000Z"
@@ -276,51 +151,46 @@ GET /api/bookings/user/1
 
 ### Error Responses
 
-**404 Not Found** - User not found
+#### User Not Found (404 Not Found)
 ```json
 {
   "error": "User not found"
 }
 ```
 
-**400 Bad Request** - Invalid request
+#### Bad Request (400 Bad Request)
 ```json
 {
   "error": "User ID is required"
 }
 ```
 
-**500 Internal Server Error** - Server error
+#### Server Error (500 Internal Server Error)
 ```json
 {
   "error": "Error message describing what went wrong"
 }
 ```
 
-### Response Structure
-
-The API returns comprehensive data including:
-- **User Profile**: Complete user information with city details
-- **Parents**: All parent records associated with the user
-- **Bookings**: All bookings made by the user's parent records, including:
-  - Booking details (reference, status, amounts, dates)
-  - Event information with venue details
-  - Children enrolled in each booking
-  - Game and slot assignments for each child
-  - Payment records and transaction details
-
-### Features
+## Features
 - Complete user profile with city information
 - All parent records linked to the user
-- Bookings ordered by creation date (most recent first)
-- Detailed event and venue information
+- All bookings made by the user's parent records
+- Event details with venue information
 - Children information for each booking
-- Game details including slots, prices, and availability
-- Complete payment history for each booking
+- Game and slot details for each child
+- Payment information for each booking
+- Ordered by booking creation date (most recent first)
 
-### Notes
-- If the user has no bookings, an empty `bookings` array will be returned
-- Each child can have multiple games assigned
-- Each booking can have multiple payment records
-- All prices are returned in decimal format (2 decimal places)
-- Timestamps are in ISO 8601 format
+## Example Request
+```bash
+curl -X GET http://localhost:3000/api/bookings/user/1
+```
+
+## Notes
+- The API fetches all related data in a single call for efficiency
+- Bookings are returned in descending order by creation date
+- Parent can have multiple children and each child can have multiple games
+- Each booking can have multiple payment records (in case of partial payments)
+- If a user has no bookings, an empty bookings array will be returned
+- All prices are in decimal format with 2 decimal places
