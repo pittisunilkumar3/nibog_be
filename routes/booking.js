@@ -14,4 +14,7 @@ router.get('/user/:userId', bookingController.getUserProfileWithBookings);
 // GET /api/bookings/:id - Get single booking details by ID
 router.get('/:id', bookingController.getBookingById);
 
+// PATCH /api/bookings/:id - Edit a booking
+router.patch('/:id', bookingController.updateBooking);
+
 module.exports = router;

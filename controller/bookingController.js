@@ -1,4 +1,33 @@
+
 const BookingModel = require('../model/bookingModel');
+
+
+/**
+ * Update an existing booking and its related data
+ * PATCH /api/bookings/:id
+ */
+exports.updateBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    if (!bookingId) {
+      return res.status(400).json({ error: 'Booking ID is required' });
+    }
+    // Validate input (at least one field to update)
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: 'No data provided for update' });
+    }
+    await BookingModel.updateBooking(bookingId, req.body);
+    // Optionally, return the updated booking
+    const updatedBooking = await BookingModel.getBookingById(bookingId);
+    res.status(200).json({
+      message: 'Booking updated successfully',
+      data: updatedBooking
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 /**
  * Create a new booking with parent, children, and games/slots

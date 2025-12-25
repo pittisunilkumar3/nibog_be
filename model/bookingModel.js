@@ -2,61 +2,93 @@ const { promisePool } = require('../config/config');
 
 const BookingModel = {
   async createBooking(data) {
+    // ...existing code...
+  },
+
+  /**
+   * Update an existing booking and its related data
+   * @param {number} bookingId - Booking ID to update
+   * @param {object} data - Updated booking data
+   */
+  async updateBooking(bookingId, data) {
     const conn = await promisePool.getConnection();
     try {
       await conn.beginTransaction();
-      // Insert or get parent
-      let parentId = data.parent_id;
-      if (!parentId) {
-        const [parentRes] = await conn.query(
-          'INSERT INTO parents (parent_name, email, phone) VALUES (?, ?, ?)',
-          [data.parent_name, data.email, data.phone]
-        );
-        parentId = parentRes.insertId;
-      }
-      // Insert booking
-      const [bookingRes] = await conn.query(
-        'INSERT INTO bookings (parent_id, event_id, booking_ref, status, total_amount, payment_method, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [parentId, data.event_id, data.booking_ref, data.status || 'Pending', data.total_amount || 0, data.payment_method, data.payment_status || 'Pending']
+      // Update booking main fields
+      await conn.query(
+        'UPDATE bookings SET status = ?, total_amount = ?, payment_method = ?, payment_status = ?, updated_at = NOW() WHERE id = ?',
+        [data.status, data.total_amount, data.payment_method, data.payment_status, bookingId]
       );
-      const bookingId = bookingRes.insertId;
-      
-      // Insert children and their booking_games together
-      for (const child of data.children) {
-        // Create child
-        const [childRes] = await conn.query(
-          'INSERT INTO children (parent_id, full_name, date_of_birth, gender, school_name) VALUES (?, ?, ?, ?, ?)',
-          [parentId, child.full_name, child.date_of_birth, child.gender, child.school_name]
+
+      // Optionally update parent info
+      if (data.parent && data.parent.id) {
+        await conn.query(
+          'UPDATE parents SET parent_name = ?, email = ?, phone = ? WHERE id = ?',
+          [data.parent.name, data.parent.email, data.parent.phone, data.parent.id]
         );
-        const childId = childRes.insertId;
-        
-        // Create booking_games for this child (if any)
-        if (child.booking_games && Array.isArray(child.booking_games)) {
-          for (const game of child.booking_games) {
+      }
+
+      // Optionally update children and booking_games (granular)
+      if (Array.isArray(data.children)) {
+        for (const child of data.children) {
+          let childId = child.child_id;
+          if (childId) {
+            // Update existing child
             await conn.query(
-              'INSERT INTO booking_games (booking_id, child_id, game_id, slot_id, game_price) VALUES (?, ?, ?, ?, ?)',
-              [bookingId, childId, game.game_id, game.slot_id, game.game_price || 0]
+              'UPDATE children SET full_name = ?, date_of_birth = ?, gender = ?, school_name = ? WHERE id = ?',
+              [child.full_name, child.date_of_birth, child.gender, child.school_name, childId]
             );
+          } else {
+            // Insert new child
+            const [childRes] = await conn.query(
+              'INSERT INTO children (parent_id, full_name, date_of_birth, gender, school_name) VALUES (?, ?, ?, ?, ?)',
+              [data.parent.id, child.full_name, child.date_of_birth, child.gender, child.school_name]
+            );
+            childId = childRes.insertId;
+          }
+          // Handle booking_games for this child
+          if (Array.isArray(child.booking_games)) {
+            for (const game of child.booking_games) {
+              if (game.booking_game_id) {
+                // Update existing booking_game
+                await conn.query(
+                  'UPDATE booking_games SET game_id = ?, slot_id = ?, game_price = ? WHERE id = ?',
+                  [game.game_id, game.slot_id, game.game_price || 0, game.booking_game_id]
+                );
+              } else {
+                // Insert new booking_game
+                await conn.query(
+                  'INSERT INTO booking_games (booking_id, child_id, game_id, slot_id, game_price) VALUES (?, ?, ?, ?, ?)',
+                  [bookingId, childId, game.game_id, game.slot_id, game.game_price || 0]
+                );
+              }
+            }
+            // Optionally: handle deletion of removed games (if a list of to-delete IDs is provided)
+            if (Array.isArray(child.delete_booking_game_ids) && child.delete_booking_game_ids.length > 0) {
+              await conn.query(
+                'DELETE FROM booking_games WHERE id IN (?) AND booking_id = ? AND child_id = ?',
+                [child.delete_booking_game_ids, bookingId, childId]
+              );
+            }
           }
         }
+        // Optionally: handle deletion of removed children (if a list of to-delete IDs is provided)
+        if (Array.isArray(data.delete_child_ids) && data.delete_child_ids.length > 0) {
+          await conn.query('DELETE FROM booking_games WHERE child_id IN (?) AND booking_id = ?', [data.delete_child_ids, bookingId]);
+          await conn.query('DELETE FROM children WHERE id IN (?)', [data.delete_child_ids]);
+        }
       }
-      // Insert payment record
-      let paymentId = null;
-      if (data.payment) {
-        const [paymentRes] = await conn.query(
-          'INSERT INTO payments (booking_id, transaction_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?, ?)',
-          [
-            bookingId,
-            data.payment.transaction_id || null,
-            data.payment.amount || data.total_amount || 0,
-            data.payment.payment_method || data.payment_method || null,
-            data.payment.payment_status || data.payment_status || 'Pending'
-          ]
+
+      // Optionally update payment
+      if (data.payment && data.payment.payment_id) {
+        await conn.query(
+          'UPDATE payments SET transaction_id = ?, amount = ?, payment_method = ?, payment_status = ?, updated_at = NOW() WHERE id = ?',
+          [data.payment.transaction_id, data.payment.amount, data.payment.payment_method, data.payment.payment_status, data.payment.payment_id]
         );
-        paymentId = paymentRes.insertId;
       }
+
       await conn.commit();
-      return { booking_id: bookingId, payment_id: paymentId };
+      return true;
     } catch (err) {
       await conn.rollback();
       throw err;
@@ -64,6 +96,7 @@ const BookingModel = {
       conn.release();
     }
   },
+    // ...existing code for createBooking...
 
   /**
    * Get user profile with all booking details by user_id
