@@ -5,9 +5,10 @@
 
 1. [Create Booking](#create-booking) - `POST /api/bookings`
 2. [Edit Booking](#edit-booking) - `PATCH /api/bookings/:id`
-3. [Get All Bookings](#get-all-bookings) - `GET /api/bookings`
-4. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
-5. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
+3. [Delete Booking](#delete-booking) - `DELETE /api/bookings/:id`
+4. [Get All Bookings](#get-all-bookings) - `GET /api/bookings`
+5. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
+6. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
 ---
 
 ## Edit Booking
@@ -99,6 +100,73 @@ curl -X PATCH http://localhost:3004/api/bookings/1 \
 - If payment is provided, the payment record is updated.
 - All relationships and foreign keys are maintained.
 - Returns the full updated booking object on success.
+
+---
+
+## Delete Booking
+
+**DELETE** `/api/bookings/:id`
+
+Delete a booking and all its related data including children, games, payments, and the parent record (if no other bookings exist for that parent).
+
+### URL Parameters
+- `id` (integer, required) - The booking ID to delete
+
+### Request Example
+```bash
+DELETE /api/bookings/5
+```
+
+### Success Response
+
+**200 OK**
+```json
+{
+  "success": true,
+  "message": "Booking deleted successfully"
+}
+```
+
+### Error Responses
+
+**404 Not Found**
+```json
+{
+  "error": "Booking not found"
+}
+```
+
+**400 Bad Request**
+```json
+{
+  "error": "Booking ID is required"
+}
+```
+
+**500 Internal Server Error**
+```json
+{
+  "error": "Error message describing what went wrong"
+}
+```
+
+### Notes
+- Deletes all related data in the following order:
+  1. Booking games (booking_games table)
+  2. Payment records (payments table)
+  3. Booking record (bookings table)
+  4. Children records (children table)
+  5. Parent record (parents table) - only if no other bookings exist
+- Uses database transactions to ensure data integrity
+- If deletion fails at any step, all changes are rolled back
+- Cannot be undone once completed
+
+### Cascade Deletion Details
+When a booking is deleted, the following related records are automatically removed:
+- All `booking_games` entries linked to the booking
+- All `payments` records for the booking
+- All `children` records enrolled in the booking
+- The `parent` record (only if they have no other bookings in the system)
 
 ---
 

@@ -153,3 +153,33 @@ exports.getBookingById = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+/**
+ * Delete a booking and all related data
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * DELETE /api/bookings/:id
+ */
+exports.deleteBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    
+    if (!bookingId) {
+      return res.status(400).json({ error: 'Booking ID is required' });
+    }
+
+    const result = await BookingModel.deleteBooking(bookingId);
+    
+    if (result === null) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking deleted successfully'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -644,6 +644,71 @@ const BookingModel = {
     } catch (err) {
       throw err;
     }
+  },
+
+  /**
+   * Delete a booking and all related data
+   * @param {number} bookingId - Booking ID to delete
+   * @returns {boolean} - True if successful
+   */
+  async deleteBooking(bookingId) {
+    const conn = await promisePool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Get booking to verify it exists and get parent_id
+      const [bookingRows] = await conn.query(
+        'SELECT parent_id FROM bookings WHERE id = ?',
+        [bookingId]
+      );
+
+      if (!bookingRows || bookingRows.length === 0) {
+        await conn.rollback();
+        return null; // Booking not found
+      }
+
+      const parentId = bookingRows[0].parent_id;
+
+      // Get all children IDs for this booking
+      const [childrenRows] = await conn.query(
+        'SELECT DISTINCT c.id FROM children c INNER JOIN booking_games bg ON c.id = bg.child_id WHERE bg.booking_id = ?',
+        [bookingId]
+      );
+      const childIds = childrenRows.map(row => row.id);
+
+      // Delete booking_games
+      await conn.query('DELETE FROM booking_games WHERE booking_id = ?', [bookingId]);
+
+      // Delete payments
+      await conn.query('DELETE FROM payments WHERE booking_id = ?', [bookingId]);
+
+      // Delete booking
+      await conn.query('DELETE FROM bookings WHERE id = ?', [bookingId]);
+
+      // Delete children if they exist
+      if (childIds.length > 0) {
+        await conn.query('DELETE FROM children WHERE id IN (?)', [childIds]);
+      }
+
+      // Check if parent has any other bookings
+      const [otherBookings] = await conn.query(
+        'SELECT id FROM bookings WHERE parent_id = ? LIMIT 1',
+        [parentId]
+      );
+
+      // If no other bookings, delete the parent
+      if (!otherBookings || otherBookings.length === 0) {
+        await conn.query('DELETE FROM parents WHERE id = ?', [parentId]);
+      }
+
+      await conn.commit();
+      return true;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   }
 };
 
