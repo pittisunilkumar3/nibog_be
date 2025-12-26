@@ -102,8 +102,8 @@ exports.getUserProfileWithBookings = async (req, res) => {
 };
 
 /**
- * Get all bookings with complete details
- * Returns list of all bookings with parent, event, children, games, and payments
+ * Get all bookings with complete details (upcoming events only)
+ * Returns list of bookings for events that haven't passed
  * @param {object} req - Express request object
  * @param {object} res - Express response object
  *
@@ -112,6 +112,28 @@ exports.getUserProfileWithBookings = async (req, res) => {
 exports.getAllBookings = async (req, res) => {
   try {
     const bookings = await BookingModel.getAllBookings();
+    
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Get all bookings including past and upcoming events
+ * Returns complete list of all bookings regardless of event date
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * GET /api/bookings/all
+ */
+exports.getAllBookingsComplete = async (req, res) => {
+  try {
+    const bookings = await BookingModel.getAllBookingsComplete();
     
     res.status(200).json({
       success: true,

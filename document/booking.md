@@ -6,9 +6,10 @@
 1. [Create Booking](#create-booking) - `POST /api/bookings`
 2. [Edit Booking](#edit-booking) - `PATCH /api/bookings/:id`
 3. [Delete Booking](#delete-booking) - `DELETE /api/bookings/:id`
-4. [Get All Bookings](#get-all-bookings) - `GET /api/bookings`
-5. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
-6. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
+4. [Get All Bookings](#get-all-bookings) - `GET /api/bookings` (upcoming events only)
+5. [Get All Bookings Complete](#get-all-bookings-complete) - `GET /api/bookings/all` (all events)
+6. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
+7. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
 ---
 
 ## Edit Booking
@@ -174,7 +175,7 @@ When a booking is deleted, the following related records are automatically remov
 
 **GET** `/api/bookings`
 
-Get a list of all bookings with complete details including parent info, event details, children, games, and payment information.
+Get a list of all bookings for **upcoming events only** (events that haven't passed yet) with complete details including parent info, event details, children, games, and payment information.
 
 ### Request Example
 ```bash
@@ -261,6 +262,8 @@ GET /api/bookings
 ```
 
 ### Features
+- Returns only bookings for upcoming/pending events (event_date >= current date)
+- Bookings for past events are automatically excluded
 - Returns all bookings ordered by creation date (newest first)
 - Complete parent information with contact details
 - Full event details with venue information
@@ -268,6 +271,116 @@ GET /api/bookings
 - Game and slot details for each child
 - Payment records for each booking
 - Total count of bookings
+
+---
+
+## Get All Bookings Complete
+
+**GET** `/api/bookings/all`
+
+Get a **complete list of ALL bookings** including both past and upcoming events with complete details including parent info, event details, children, games, and payment information.
+
+### Request Example
+```bash
+GET /api/bookings/all
+```
+
+### Success Response
+
+**200 OK**
+```json
+{
+  "success": true,
+  "count": 5,
+  "data": [
+    {
+      "id": 12,
+      "booking_ref": "NEW2025123456",
+      "status": "Confirmed",
+      "total_amount": "3598.00",
+      "payment_method": null,
+      "payment_status": "Pending",
+      "booking_date": "2025-12-21T12:14:47.000Z",
+      "parent": {
+        "id": 12,
+        "name": "Sarah Williams",
+        "email": "sarah.w@test.com",
+        "phone": "9998887776",
+        "user_id": null
+      },
+      "event": {
+        "id": 5,
+        "name": "Summer Fun Event",
+        "date": "2025-12-31",
+        "description": "Exciting games for children",
+        "image_url": "event.jpg",
+        "status": "Published",
+        "venue": {
+          "id": 2,
+          "name": "Kids Arena",
+          "address": "123 Test St",
+          "contact": "1234567890",
+          "city": "Test City",
+          "state": "Test State"
+        }
+      },
+      "children": [
+        {
+          "child_id": 14,
+          "full_name": "Emma Williams",
+          "date_of_birth": "2019-04-10",
+          "gender": "Female",
+          "school_name": "Green Valley School",
+          "booking_games": [
+            {
+              "booking_game_id": 12,
+              "game_price": "1799.00",
+              "game_id": 1,
+              "game_name": "Test Game",
+              "game_description": "Test game description",
+              "min_age": 1,
+              "max_age": 101,
+              "game_image_url": "game.png",
+              "slot_id": 8,
+              "slot_start_time": "10:00:00",
+              "slot_end_time": "11:30:00",
+              "slot_custom_title": "Test Game"
+            }
+          ]
+        }
+      ],
+      "payments": [
+        {
+          "payment_id": 7,
+          "transaction_id": "TXN555444333",
+          "amount": "3598.00",
+          "payment_method": "UPI",
+          "payment_status": "Paid",
+          "payment_date": "2025-12-21T12:14:47.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Features
+- Returns **all bookings** regardless of event date
+- Includes bookings for past events (completed)
+- Includes bookings for upcoming events (pending)
+- Returns all bookings ordered by creation date (newest first)
+- Complete parent information with contact details
+- Full event details with venue information
+- All children enrolled in each booking
+- Game and slot details for each child
+- Payment records for each booking
+- Total count of all bookings
+
+### Use Cases
+- Admin panel to view all historical bookings
+- Reports and analytics for past events
+- Complete booking history
+- Accounting and reconciliation
 
 ---
 
