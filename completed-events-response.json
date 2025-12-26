@@ -1,0 +1,100 @@
+﻿{
+    "success":  true,
+    "count":  1,
+    "data":  [
+                 {
+                     "event_id":  8,
+                     "event_name":  "testttt",
+                     "event_date":  "2025-12-01T18:30:00.000Z",
+                     "description":  "test",
+                     "image_url":  "eventimage_1766587307360_3140.jpeg",
+                     "status":  "Published",
+                     "venue":  {
+                                   "id":  2,
+                                   "name":  "2",
+                                   "address":  "123 Test St",
+                                   "contact":  null
+                               },
+                     "city":  {
+                                  "id":  1,
+                                  "name":  "Test City",
+                                  "state":  "Test State"
+                              },
+                     "event_games_with_slots":  [
+                                                    {
+                                                        "id":  16,
+                                                        "game_id":  5,
+                                                        "game_name":  "test2",
+                                                        "game_description":  "test",
+                                                        "game_image_url":  "./upload/gamesimage/gameimage_1766552537139_8245.jpeg",
+                                                        "custom_title":  "test2",
+                                                        "custom_description":  "test",
+                                                        "custom_price":  0,
+                                                        "start_time":  "10:00:00",
+                                                        "end_time":  "11:30:00",
+                                                        "slot_price":  0,
+                                                        "max_participants":  12,
+                                                        "note":  "note",
+                                                        "is_active":  1,
+                                                        "min_age":  null,
+                                                        "max_age":  300
+                                                    },
+                                                    {
+                                                        "id":  17,
+                                                        "game_id":  6,
+                                                        "game_name":  "game2",
+                                                        "game_description":  "games",
+                                                        "game_image_url":  "./upload/gamesimage/gameimage_1766588129067_3123.png",
+                                                        "custom_title":  "game2",
+                                                        "custom_description":  "games",
+                                                        "custom_price":  0,
+                                                        "start_time":  "10:00:00",
+                                                        "end_time":  "11:30:00",
+                                                        "slot_price":  0,
+                                                        "max_participants":  12,
+                                                        "note":  "",
+                                                        "is_active":  1,
+                                                        "min_age":  null,
+                                                        "max_age":  300
+                                                    }
+                                                ],
+                     "statistics":  {
+                                        "total_bookings":  1,
+                                        "total_parents":  1,
+                                        "total_children":  1,
+                                        "total_game_bookings":  1,
+                                        "bookings_by_status":  {
+                                                                   "confirmed":  1,
+                                                                   "pending":  0,
+                                                                   "cancelled":  0
+                                                               },
+                                        "revenue":  {
+                                                        "total":  1799,
+                                                        "paid":  1799,
+                                                        "pending":  0
+                                                    },
+                                        "payment_methods":  [
+                                                                {
+                                                                    "method":  "Online",
+                                                                    "count":  1,
+                                                                    "amount":  1799
+                                                                }
+                                                            ],
+                                        "top_games":  [
+                                                          {
+                                                              "game_id":  5,
+                                                              "game_name":  "test2",
+                                                              "bookings":  1,
+                                                              "revenue":  1799
+                                                          }
+                                                      ],
+                                        "age_distribution":  [
+                                                                 {
+                                                                     "age_group":  "3-5 years",
+                                                                     "count":  1
+                                                                 }
+                                                             ]
+                                    }
+                 }
+             ]
+}

@@ -247,6 +247,8 @@ Delete an event and its slots. Requires employee Bearer token authentication.
 
 ### Notes
 - Only authenticated employees can delete events.
+
+
 ## Get Completed Events with Statistics
 
 **GET** `/api/events/completed`
@@ -278,6 +280,62 @@ Get all completed events (past events where event_date < current date) with comp
         "name": "Mumbai",
         "state": "Maharashtra"
       },
+      "games": [
+        {
+          "game_id": 3,
+          "game_name": "Trampoline",
+          "game_description": "Jump and bounce fun",
+          "game_image_url": "trampoline.jpg",
+          "min_age": 5,
+          "max_age": 12
+        },
+        {
+          "game_id": 5,
+          "game_name": "Rock Climbing",
+          "game_description": "Climb to new heights",
+          "game_image_url": "climbing.jpg",
+          "min_age": 7,
+          "max_age": 14
+        }
+      ],
+      "event_games_with_slots": [
+        {
+          "id": 10,
+          "game_id": 3,
+          "game_name": "Trampoline",
+          "game_description": "Jump and bounce fun",
+          "game_image_url": "trampoline.jpg",
+          "custom_title": "Trampoline Session",
+          "custom_description": "30-minute jumping session",
+          "custom_price": 500.00,
+          "start_time": "10:00:00",
+          "end_time": "10:30:00",
+          "slot_price": 500.00,
+          "max_participants": 15,
+          "note": "Safety equipment provided",
+          "is_active": 1,
+          "min_age": 5,
+          "max_age": 12
+        },
+        {
+          "id": 11,
+          "game_id": 5,
+          "game_name": "Rock Climbing",
+          "game_description": "Climb to new heights",
+          "game_image_url": "climbing.jpg",
+          "custom_title": "Rock Climbing Adventure",
+          "custom_description": "45-minute climbing session",
+          "custom_price": 800.00,
+          "start_time": "11:00:00",
+          "end_time": "11:45:00",
+          "slot_price": 800.00,
+          "max_participants": 10,
+          "note": "Harness included",
+          "is_active": 1,
+          "min_age": 7,
+          "max_age": 14
+        }
+      ],
       "statistics": {
         "total_bookings": 45,
         "total_parents": 38,
@@ -343,6 +401,8 @@ Get all completed events (past events where event_date < current date) with comp
 - **500 Internal Server Error**
 
 ### Features
+- **Games List**: Unique list of all games available in this event (without duplicates)
+- **Event Games/Slots**: Complete list of all games and time slots configured for the event
 - **Revenue Tracking**: Total, paid, and pending revenue
 - **Registration Stats**: Total bookings, unique parents, children count
 - **Booking Status**: Breakdown by confirmed, pending, cancelled

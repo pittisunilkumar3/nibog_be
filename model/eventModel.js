@@ -287,6 +287,48 @@ EventModel.getCompletedEventsWithStats = async function() {
         ORDER BY age_group
       `, [event.event_date, event.event_date, event.event_date, event.event_date, event.event_id]);
 
+      // Get event games with slots for this event
+      const [eventGames] = await promisePool.query(`
+        SELECT 
+          egs.id,
+          egs.game_id,
+          egs.custom_title,
+          egs.custom_description,
+          egs.custom_price,
+          egs.start_time,
+          egs.end_time,
+          egs.slot_price,
+          egs.max_participants,
+          egs.note,
+          egs.is_active,
+          egs.min_age,
+          egs.max_age,
+          g.game_name,
+          g.description as game_description,
+          g.image_url as game_image_url
+        FROM event_games_with_slots egs
+        INNER JOIN baby_games g ON egs.game_id = g.id
+        WHERE egs.event_id = ?
+        ORDER BY egs.start_time
+      `, [event.event_id]);
+
+      // Create unique games list (without duplicates)
+      const uniqueGames = [];
+      const gameIds = new Set();
+      eventGames.forEach(eg => {
+        if (!gameIds.has(eg.game_id)) {
+          gameIds.add(eg.game_id);
+          uniqueGames.push({
+            game_id: eg.game_id,
+            game_name: eg.game_name,
+            game_description: eg.game_description,
+            game_image_url: eg.game_image_url,
+            min_age: eg.min_age,
+            max_age: eg.max_age
+          });
+        }
+      });
+
       events.push({
         event_id: event.event_id,
         event_name: event.event_name,
@@ -305,6 +347,25 @@ EventModel.getCompletedEventsWithStats = async function() {
           name: event.city_name,
           state: event.state
         },
+        games: uniqueGames,
+        event_games_with_slots: eventGames.map(eg => ({
+          id: eg.id,
+          game_id: eg.game_id,
+          game_name: eg.game_name,
+          game_description: eg.game_description,
+          game_image_url: eg.game_image_url,
+          custom_title: eg.custom_title,
+          custom_description: eg.custom_description,
+          custom_price: parseFloat(eg.custom_price) || 0,
+          start_time: eg.start_time,
+          end_time: eg.end_time,
+          slot_price: parseFloat(eg.slot_price) || 0,
+          max_participants: eg.max_participants,
+          note: eg.note,
+          is_active: eg.is_active,
+          min_age: eg.min_age,
+          max_age: eg.max_age
+        })),
         statistics: {
           total_bookings: event.total_bookings || 0,
           total_parents: event.total_parents || 0,
