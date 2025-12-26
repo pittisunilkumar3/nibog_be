@@ -119,7 +119,73 @@ http://localhost:3004/api/user
 
 ---
 
-### 3. Get Profile (Protected)
+### 3. Google Sign-In
+**POST** `/api/user/google-signin`
+
+**Description:** Sign in or sign up using Google OAuth. Verifies Google ID token and returns JWT token.
+
+**Request Body:**
+```json
+{
+  "token": "google_id_token_from_frontend"
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "token": "<jwt_token>",
+  "user": {
+    "user_id": 1,
+    "full_name": "John Doe",
+    "email": "john@example.com",
+    "phone": "",
+    "city_id": null,
+    "city_name": null,
+    "email_verified": 1,
+    "auth_provider": "google"
+  }
+}
+```
+
+**Error Responses:**
+
+*Missing Token:*
+```json
+{
+  "success": false,
+  "message": "Google token is required."
+}
+```
+
+*Invalid Token:*
+```json
+{
+  "success": false,
+  "message": "Invalid Google token.",
+  "error": "Token verification failed"
+}
+```
+
+*Email Conflict (email exists with local auth):*
+```json
+{
+  "success": false,
+  "message": "An account with this email already exists. Please log in with your password or reset it."
+}
+```
+
+**Notes:**
+- Google users are automatically created on first sign-in
+- Email is automatically verified for Google users
+- `auth_provider` field indicates sign-in method ('local' or 'google')
+- JWT token expires in 7 days
+- For implementation details, see [GOOGLE_SIGNIN_GUIDE.md](../GOOGLE_SIGNIN_GUIDE.md)
+
+---
+
+### 4. Get Profile (Protected)
 **GET** `/api/user/profile`
 
 **Headers:**
@@ -165,7 +231,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 4. List All Users (with City/State)
+### 5. List All Users (with City/State)
 **GET** `/api/user/list`
 
 **Description:**
@@ -211,7 +277,7 @@ curl -X GET "http://localhost:3004/api/user/list"
 
 ---
 
-### 5. Get Single User (with City/State)
+### 6. Get Single User (with City/State)
 **GET** `/api/user/{id}`
 
 **Description:**
@@ -242,7 +308,7 @@ curl -X GET "http://localhost:3004/api/user/1"
 ```
 
 ---
-### 6. Edit User (Update by ID)
+### 7. Edit User (Update by ID)
 **PUT** `/api/user/{id}`
 
 **Description:**

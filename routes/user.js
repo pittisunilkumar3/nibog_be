@@ -8,6 +8,8 @@ const { authenticateUser } = require('../controller/authMiddleware');
 router.post('/register', userController.register);
 // Login
 router.post('/login', userController.login);
+// Google Sign-In
+router.post('/google-signin', userController.googleSignIn);
 // Get profile (protected)
 router.get('/profile', authenticateUser, userController.getProfile);
 // List all users with city/state
