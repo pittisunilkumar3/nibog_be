@@ -191,3 +191,156 @@ EventModel.listEventsWithDetails = async function () {
   });
   return events;
 };
+
+/**
+ * Get completed events with comprehensive statistics
+ * Returns events where event_date < current date with booking statistics
+ */
+EventModel.getCompletedEventsWithStats = async function() {
+  try {
+    // Get all completed events (event_date < current date)
+    const [eventRows] = await promisePool.query(`
+      SELECT 
+        e.id as event_id,
+        e.title as event_name,
+        e.event_date,
+        e.description as event_description,
+        e.image_url as event_image_url,
+        e.status as event_status,
+        v.id as venue_id,
+        v.venue_name,
+        v.address as venue_address,
+        v.contact_number as venue_contact,
+        c.id as city_id,
+        c.city_name,
+        c.state,
+        COUNT(DISTINCT b.id) as total_bookings,
+        COUNT(DISTINCT b.parent_id) as total_parents,
+        COUNT(DISTINCT ch.id) as total_children,
+        COUNT(DISTINCT bg.id) as total_game_bookings,
+        SUM(b.total_amount) as total_revenue,
+        SUM(CASE WHEN p.payment_status = 'Paid' THEN p.amount ELSE 0 END) as paid_revenue,
+        SUM(CASE WHEN p.payment_status = 'Pending' THEN p.amount ELSE 0 END) as pending_revenue,
+        COUNT(DISTINCT CASE WHEN b.status = 'Confirmed' THEN b.id END) as confirmed_bookings,
+        COUNT(DISTINCT CASE WHEN b.status = 'Pending' THEN b.id END) as pending_bookings,
+        COUNT(DISTINCT CASE WHEN b.status = 'Cancelled' THEN b.id END) as cancelled_bookings
+      FROM events e
+      LEFT JOIN venues v ON e.venue_id = v.id
+      LEFT JOIN cities c ON e.city_id = c.id
+      LEFT JOIN bookings b ON e.id = b.event_id
+      LEFT JOIN children ch ON b.parent_id = ch.parent_id
+      LEFT JOIN booking_games bg ON b.id = bg.booking_id
+      LEFT JOIN payments p ON b.id = p.booking_id
+      WHERE e.event_date < CURDATE()
+      GROUP BY e.id, e.title, e.event_date, e.description, e.image_url, e.status,
+               v.id, v.venue_name, v.address, v.contact_number,
+               c.id, c.city_name, c.state
+      ORDER BY e.event_date DESC
+    `);
+
+    const events = [];
+    for (const event of eventRows) {
+      // Get payment method breakdown
+      const [paymentMethods] = await promisePool.query(`
+        SELECT 
+          p.payment_method,
+          COUNT(*) as count,
+          SUM(p.amount) as total_amount
+        FROM payments p
+        INNER JOIN bookings b ON p.booking_id = b.id
+        WHERE b.event_id = ? AND p.payment_method IS NOT NULL
+        GROUP BY p.payment_method
+      `, [event.event_id]);
+
+      // Get top games for this event
+      const [topGames] = await promisePool.query(`
+        SELECT 
+          g.id as game_id,
+          g.game_name,
+          COUNT(bg.id) as booking_count,
+          SUM(bg.game_price) as total_revenue
+        FROM booking_games bg
+        INNER JOIN bookings b ON bg.booking_id = b.id
+        INNER JOIN baby_games g ON bg.game_id = g.id
+        WHERE b.event_id = ?
+        GROUP BY g.id, g.game_name
+        ORDER BY booking_count DESC
+        LIMIT 5
+      `, [event.event_id]);
+
+      // Get age distribution of children
+      const [ageDistribution] = await promisePool.query(`
+        SELECT 
+          CASE 
+            WHEN TIMESTAMPDIFF(YEAR, ch.date_of_birth, ?) < 3 THEN '0-2 years'
+            WHEN TIMESTAMPDIFF(YEAR, ch.date_of_birth, ?) < 6 THEN '3-5 years'
+            WHEN TIMESTAMPDIFF(YEAR, ch.date_of_birth, ?) < 9 THEN '6-8 years'
+            WHEN TIMESTAMPDIFF(YEAR, ch.date_of_birth, ?) < 13 THEN '9-12 years'
+            ELSE '13+ years'
+          END as age_group,
+          COUNT(*) as count
+        FROM children ch
+        INNER JOIN parents p ON ch.parent_id = p.id
+        INNER JOIN bookings b ON p.id = b.parent_id
+        WHERE b.event_id = ?
+        GROUP BY age_group
+        ORDER BY age_group
+      `, [event.event_date, event.event_date, event.event_date, event.event_date, event.event_id]);
+
+      events.push({
+        event_id: event.event_id,
+        event_name: event.event_name,
+        event_date: event.event_date,
+        description: event.event_description,
+        image_url: event.event_image_url,
+        status: event.event_status,
+        venue: {
+          id: event.venue_id,
+          name: event.venue_name,
+          address: event.venue_address,
+          contact: event.venue_contact
+        },
+        city: {
+          id: event.city_id,
+          name: event.city_name,
+          state: event.state
+        },
+        statistics: {
+          total_bookings: event.total_bookings || 0,
+          total_parents: event.total_parents || 0,
+          total_children: event.total_children || 0,
+          total_game_bookings: event.total_game_bookings || 0,
+          bookings_by_status: {
+            confirmed: event.confirmed_bookings || 0,
+            pending: event.pending_bookings || 0,
+            cancelled: event.cancelled_bookings || 0
+          },
+          revenue: {
+            total: parseFloat(event.total_revenue) || 0,
+            paid: parseFloat(event.paid_revenue) || 0,
+            pending: parseFloat(event.pending_revenue) || 0
+          },
+          payment_methods: paymentMethods.map(pm => ({
+            method: pm.payment_method,
+            count: pm.count,
+            amount: parseFloat(pm.total_amount)
+          })),
+          top_games: topGames.map(g => ({
+            game_id: g.game_id,
+            game_name: g.game_name,
+            bookings: g.booking_count,
+            revenue: parseFloat(g.total_revenue)
+          })),
+          age_distribution: ageDistribution.map(ad => ({
+            age_group: ad.age_group,
+            count: ad.count
+          }))
+        }
+      });
+    }
+
+    return events;
+  } catch (err) {
+    throw err;
+  }
+};

@@ -247,3 +247,114 @@ Delete an event and its slots. Requires employee Bearer token authentication.
 
 ### Notes
 - Only authenticated employees can delete events.
+## Get Completed Events with Statistics
+
+**GET** `/api/events/completed`
+
+Get all completed events (past events where event_date < current date) with comprehensive statistics including revenue, bookings, demographics, and analytics.
+
+### Success Response
+- **200 OK**
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "event_id": 5,
+      "event_name": "Summer Camp 2024",
+      "event_date": "2024-07-15",
+      "description": "Fun summer activities for kids",
+      "image_url": "https://example.com/image.jpg",
+      "status": "Completed",
+      "venue": {
+        "id": 2,
+        "name": "Adventure Park",
+        "address": "123 Park Street",
+        "contact": "+1234567890"
+      },
+      "city": {
+        "id": 1,
+        "name": "Mumbai",
+        "state": "Maharashtra"
+      },
+      "statistics": {
+        "total_bookings": 45,
+        "total_parents": 38,
+        "total_children": 62,
+        "total_game_bookings": 156,
+        "bookings_by_status": {
+          "confirmed": 40,
+          "pending": 3,
+          "cancelled": 2
+        },
+        "revenue": {
+          "total": 125000,
+          "paid": 118000,
+          "pending": 7000
+        },
+        "payment_methods": [
+          {
+            "method": "Credit Card",
+            "count": 25,
+            "amount": 75000
+          },
+          {
+            "method": "UPI",
+            "count": 15,
+            "amount": 43000
+          }
+        ],
+        "top_games": [
+          {
+            "game_id": 3,
+            "game_name": "Trampoline",
+            "bookings": 42,
+            "revenue": 21000
+          },
+          {
+            "game_id": 5,
+            "game_name": "Rock Climbing",
+            "bookings": 35,
+            "revenue": 28000
+          }
+        ],
+        "age_distribution": [
+          {
+            "age_group": "3-5 years",
+            "count": 18
+          },
+          {
+            "age_group": "6-8 years",
+            "count": 28
+          },
+          {
+            "age_group": "9-12 years",
+            "count": 16
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Error Response
+- **500 Internal Server Error**
+
+### Features
+- **Revenue Tracking**: Total, paid, and pending revenue
+- **Registration Stats**: Total bookings, unique parents, children count
+- **Booking Status**: Breakdown by confirmed, pending, cancelled
+- **Payment Analytics**: Distribution by payment method (Credit Card, UPI, etc.)
+- **Popular Games**: Top 5 games by booking count with revenue
+- **Demographics**: Age distribution of children participants
+- **City/Venue Info**: Complete location details for each event
+
+### Use Cases
+- Generate revenue reports for past events
+- Analyze popular games and activities
+- Track payment collection status
+- Understand customer demographics
+- Evaluate event performance metrics
+- Export data for business intelligence

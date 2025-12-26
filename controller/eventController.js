@@ -98,6 +98,29 @@ exports.deleteEvent = async (req, res) => {
   }
 };
 
+/**
+ * Get completed events with comprehensive statistics
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * GET /api/events/completed
+ */
+exports.getCompletedEventsWithStats = async (req, res) => {
+  try {
+    const events = await EventModel.getCompletedEventsWithStats();
+    res.json({
+      success: true,
+      count: events.length,
+      data: events
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
 
 /**
  * List all events with their slots, venue, city, and game info (public)

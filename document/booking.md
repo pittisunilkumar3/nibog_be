@@ -2,7 +2,6 @@
 
 ## Endpoints Overview
 
-
 1. [Create Booking](#create-booking) - `POST /api/bookings`
 2. [Edit Booking](#edit-booking) - `PATCH /api/bookings/:id`
 3. [Delete Booking](#delete-booking) - `DELETE /api/bookings/:id`
@@ -10,6 +9,10 @@
 5. [Get All Bookings Complete](#get-all-bookings-complete) - `GET /api/bookings/all` (all events)
 6. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
 7. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
+
+> **Note:** The "Get Completed Events with Statistics" endpoint has been moved to the Event API.  
+> See `GET /api/events/completed` in [Event API Documentation](./event.md).
+
 ---
 
 ## Edit Booking
@@ -381,6 +384,17 @@ GET /api/bookings/all
 - Reports and analytics for past events
 - Complete booking history
 - Accounting and reconciliation
+
+---
+
+## ~~Get Completed Events with Statistics~~ (Moved to Event API)
+
+> **⚠️ Important:** This endpoint has been moved to the **Event API** for better architectural organization.
+> 
+> **New Endpoint:** `GET /api/events/completed`  
+> **Documentation:** See [Event API Documentation](./event.md#get-completed-events-with-statistics)
+
+This functionality now lives under `/api/events/completed` because it primarily deals with event data and statistics. While it includes booking information, the primary resource is events, not bookings.
 
 ---
 
