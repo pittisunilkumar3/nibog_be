@@ -81,7 +81,7 @@ const CityModel = {
         'SELECT * FROM cities WHERE is_active = 1 ORDER BY city_name ASC'
       );
 
-      // Get all events with venue info
+      // Get all events with venue info (only upcoming/ongoing events)
       const [events] = await promisePool.query(`
         SELECT 
           e.*,
@@ -90,7 +90,7 @@ const CityModel = {
           v.capacity as venue_capacity
         FROM events e
         LEFT JOIN venues v ON e.venue_id = v.id
-        WHERE e.is_active = 1
+        WHERE e.is_active = 1 AND e.event_date >= CURDATE()
         ORDER BY e.event_date ASC, e.priority ASC
       `);
 

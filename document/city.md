@@ -129,7 +129,7 @@ curl -X GET "http://localhost:3004/api/city/with-venues/list"
 **Description:**
 Fetch all active cities with their events, available games, time slots, and real-time availability. This endpoint is perfect for building a booking interface as it includes:
 - City and venue information
-- All active events in each city
+- All active **upcoming** events in each city (excludes completed events)
 - Games/activities available for each event (only active games)
 - Time slots with pricing (only active slots)
 - Real-time availability (booked count and available slots)
@@ -137,7 +137,7 @@ Fetch all active cities with their events, available games, time slots, and real
 
 **Filters Applied:**
 - Only returns cities where `is_active = 1`
-- Only returns events where `is_active = 1`
+- Only returns events where `is_active = 1` **AND `event_date >= current date`** (upcoming events only)
 - Only returns slots where `is_active = 1`
 - Only returns games where `is_active = 1`
 
