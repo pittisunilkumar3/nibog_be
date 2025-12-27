@@ -93,13 +93,12 @@ async function sendBookingEmails(booking, requestData) {
     
     // Format children and games details
     const childrenDetails = booking.children.map(child => {
-      const games = booking.booking_games
-        .filter(g => g.child_id === child.child_id)
+      const games = (child.booking_games || [])
         .map(g => `
           <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">${g.game_name}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${g.slot_time || 'N/A'}</td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹${parseFloat(g.game_price).toFixed(2)}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${g.game_name || 'N/A'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${g.slot_start_time || 'N/A'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹${parseFloat(g.game_price || 0).toFixed(2)}</td>
           </tr>
         `).join('');
       
@@ -157,15 +156,15 @@ async function sendBookingEmails(booking, requestData) {
                 <table>
                   <tr>
                     <td style="width: 30%; font-weight: bold;">Event</td>
-                    <td>${booking.event?.event_name || 'N/A'}</td>
+                    <td>${booking.event?.name || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: bold;">Date</td>
-                    <td>${booking.event?.event_date ? new Date(booking.event.event_date).toLocaleDateString('en-IN') : 'N/A'}</td>
+                    <td>${booking.event?.date ? new Date(booking.event.date).toLocaleDateString('en-IN') : 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: bold;">Venue</td>
-                    <td>${booking.event?.venue?.venue_name || 'N/A'}</td>
+                    <td>${booking.event?.venue?.name || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: bold;">Status</td>
@@ -222,7 +221,7 @@ async function sendBookingEmails(booking, requestData) {
             
             <div class="footer">
               <p>This is an automated confirmation email</p>
-              <p><strong>Booking Date:</strong> ${new Date(booking.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+              <p><strong>Booking Date:</strong> ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
               <p>&copy; 2025 Nibog Events. All rights reserved.</p>
             </div>
           </div>
@@ -239,16 +238,16 @@ Your booking has been confirmed successfully!
 📋 Booking Reference: ${booking.booking_ref}
 
 📅 Event Details:
-- Event: ${booking.event?.event_name || 'N/A'}
-- Date: ${booking.event?.event_date ? new Date(booking.event.event_date).toLocaleDateString('en-IN') : 'N/A'}
-- Venue: ${booking.event?.venue?.venue_name || 'N/A'}
+- Event: ${booking.event?.name || 'N/A'}
+- Date: ${booking.event?.date ? new Date(booking.event.date).toLocaleDateString('en-IN') : 'N/A'}
+- Venue: ${booking.event?.venue?.name || 'N/A'}
 - Status: ${booking.status}
 
 👶 Children & Games:
-${childrenDetails.map(child => `
-${child.name} (${child.age} years, ${child.gender})
-School: ${child.school}
-Games: ${booking.booking_games.filter(g => g.child_name === child.name).map(g => g.game_name).join(', ')}
+${booking.children.map(child => `
+${child.full_name} (${child.date_of_birth ? new Date().getFullYear() - new Date(child.date_of_birth).getFullYear() : 'N/A'} years, ${child.gender})
+School: ${child.school_name || 'N/A'}
+Games: ${(child.booking_games || []).map(g => g.game_name || 'N/A').join(', ')}
 `).join('\n')}
 
 💰 Payment Summary:
@@ -261,7 +260,7 @@ Best regards,
 The Nibog Team
 
 ---
-Booking Date: ${new Date(booking.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
 © 2025 Nibog Events. All rights reserved.
       `
     };
@@ -331,15 +330,15 @@ Booking Date: ${new Date(booking.created_at).toLocaleString('en-IN', { timeZone:
                 <table>
                   <tr>
                     <td style="width: 30%; font-weight: bold;">Event</td>
-                    <td>${booking.event?.event_name || 'N/A'}</td>
+                    <td>${booking.event?.name || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: bold;">Date</td>
-                    <td>${booking.event?.event_date ? new Date(booking.event.event_date).toLocaleDateString('en-IN') : 'N/A'}</td>
+                    <td>${booking.event?.date ? new Date(booking.event.date).toLocaleDateString('en-IN') : 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: bold;">Venue</td>
-                    <td>${booking.event?.venue?.venue_name || 'N/A'}</td>
+                    <td>${booking.event?.venue?.name || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: bold;">Status</td>
@@ -391,7 +390,7 @@ Booking Date: ${new Date(booking.created_at).toLocaleString('en-IN', { timeZone:
 
               <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px;">
                 <p style="margin: 0;"><strong>⏰ Booking Time:</strong></p>
-                <p style="margin: 5px 0 0 0;">${new Date(booking.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                <p style="margin: 5px 0 0 0;">${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
               </div>
             </div>
             
@@ -417,26 +416,26 @@ A new booking has been created in the system.
 - Phone: ${requestData.phone}
 
 📅 Event Details:
-- Event: ${booking.event?.event_name || 'N/A'}
-- Date: ${booking.event?.event_date ? new Date(booking.event.event_date).toLocaleDateString('en-IN') : 'N/A'}
-- Venue: ${booking.event?.venue?.venue_name || 'N/A'}
+- Event: ${booking.event?.name || 'N/A'}
+- Date: ${booking.event?.date ? new Date(booking.event.date).toLocaleDateString('en-IN') : 'N/A'}
+- Venue: ${booking.event?.venue?.name || 'N/A'}
 - Status: ${booking.status}
 
 👶 Children Details (${booking.children.length}):
-${childrenDetails.map(child => `
-${child.name} (${child.age} years, ${child.gender})
-School: ${child.school}
-Games: ${booking.booking_games.filter(g => g.child_name === child.name).map(g => g.game_name).join(', ')}
+${booking.children.map(child => `
+${child.full_name} (${child.date_of_birth ? new Date().getFullYear() - new Date(child.date_of_birth).getFullYear() : 'N/A'} years, ${child.gender})
+School: ${child.school_name || 'N/A'}
+Games: ${(child.booking_games || []).map(g => g.game_name || 'N/A').join(', ')}
 `).join('\n')}
 
 💰 Payment Summary:
 Total Amount: ₹${parseFloat(booking.total_amount).toFixed(2)}
 Payment Status: ${booking.payment_status}
 
-⏰ Booking Time: ${new Date(booking.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+⏰ Booking Time: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
 
 ---
-Booking ID: ${booking.booking_id}
+Booking ID: ${booking.id}
 © 2025 Nibog Events Admin Panel
       `
     };

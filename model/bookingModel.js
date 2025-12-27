@@ -764,22 +764,22 @@ const BookingModel = {
           phone: booking.parent_phone,
           user_id: booking.user_id
         },
-        event: {
+        event: booking.event_id ? {
           id: booking.event_id,
           name: booking.event_name,
           date: booking.event_date,
           description: booking.event_description,
           image_url: booking.event_image_url,
           status: booking.event_status,
-          venue: {
+          venue: booking.venue_id ? {
             id: booking.venue_id,
             name: booking.venue_name,
             address: booking.venue_address,
             contact: booking.venue_contact,
             city: booking.venue_city,
             state: booking.venue_state
-          }
-        },
+          } : null
+        } : null,
         children: children,
         payments: paymentRows
       };
