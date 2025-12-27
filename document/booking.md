@@ -9,9 +9,129 @@
 5. [Get All Bookings Complete](#get-all-bookings-complete) - `GET /api/bookings/all` (all events)
 6. [Get Single Booking](#get-single-booking) - `GET /api/bookings/:id`
 7. [Get User Profile with Bookings](#get-user-profile-with-bookings) - `GET /api/bookings/user/:userId`
+8. [Check Booking by Reference](#check-booking-by-reference) - `GET /api/bookings/check?booking_ref=XXX`
 
 > **Note:** The "Get Completed Events with Statistics" endpoint has been moved to the Event API.  
 > See `GET /api/events/completed` in [Event API Documentation](./event.md).
+
+---
+
+## Check Booking by Reference
+
+**GET** `/api/bookings/check`
+
+Retrieve complete booking details using a booking reference number. This endpoint is useful for allowing customers to look up their bookings without authentication.
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| booking_ref | string | Yes | The booking reference number (e.g., PPT251227045) |
+
+### Request Example
+```bash
+curl "http://localhost:3004/api/bookings/check?booking_ref=PPT251227045"
+```
+
+### Success Response
+
+**200 OK**
+```json
+{
+  "success": true,
+  "data": {
+    "booking_id": 1,
+    "booking_ref": "PPT251227045",
+    "event_id": 5,
+    "parent_id": 10,
+    "booking_date": "2025-12-27T10:30:00.000Z",
+    "status": "Confirmed",
+    "total_amount": 1799,
+    "created_at": "2025-12-27T10:30:00.000Z",
+    "updated_at": "2025-12-27T10:30:00.000Z",
+    "parent": {
+      "id": 10,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "9876543210"
+    },
+    "event": {
+      "event_id": 5,
+      "event_name": "Birthday Party Package",
+      "event_date": "2025-12-30",
+      "start_time": "14:00:00",
+      "end_time": "17:00:00",
+      "venue": {
+        "venue_id": 2,
+        "venue_name": "Nibog Party Hall",
+        "city_name": "Palakkad"
+      }
+    },
+    "children": [
+      {
+        "child_id": 12,
+        "full_name": "Emma Doe",
+        "date_of_birth": "2019-05-15",
+        "gender": "Female",
+        "school_name": "ABC School"
+      }
+    ],
+    "booking_games": [
+      {
+        "booking_game_id": 8,
+        "game_id": 1,
+        "game_name": "Jumping Castle",
+        "slot_id": 5,
+        "slot_time": "14:00:00 - 15:00:00",
+        "game_price": 1799,
+        "child_id": 12,
+        "child_name": "Emma Doe"
+      }
+    ],
+    "payments": [
+      {
+        "payment_id": 5,
+        "transaction_id": "TXN123456789",
+        "amount": 1799,
+        "payment_method": "Credit Card",
+        "payment_status": "Paid",
+        "payment_date": "2025-12-27T10:35:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+### Error Responses
+
+**400 Bad Request**
+```json
+{
+  "success": false,
+  "error": "Booking reference is required"
+}
+```
+
+**404 Not Found**
+```json
+{
+  "success": false,
+  "error": "Booking not found"
+}
+```
+
+**500 Internal Server Error**
+```json
+{
+  "success": false,
+  "error": "Internal server error"
+}
+```
+
+### Notes
+- No authentication required - this is a public endpoint for customer convenience
+- Returns all related data: parent info, event details, venue, children, games with slots, and payment information
+- Useful for customer self-service portals or booking confirmation pages
 
 ---
 

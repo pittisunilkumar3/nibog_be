@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const bookingController = require('../controller/bookingController');
 
+// GET /api/bookings/check - Check booking by reference
+router.get('/check', bookingController.checkBookingByReference);
+
 // GET /api/bookings/all - Get all bookings (past and upcoming events)
 router.get('/all', bookingController.getAllBookingsComplete);
 

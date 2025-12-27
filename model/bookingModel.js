@@ -789,6 +789,158 @@ const BookingModel = {
   },
 
   /**
+   * Get single booking details by booking reference
+   * Returns complete booking info with parent, event, children, games, and payments
+   */
+  async getBookingByReference(bookingRef) {
+    try {
+      // Get booking details by booking_ref
+      const [bookingRows] = await promisePool.query(`
+        SELECT 
+          b.id as booking_id,
+          b.booking_ref,
+          b.status as booking_status,
+          b.total_amount,
+          b.payment_method,
+          b.payment_status,
+          b.created_at as booking_date,
+          b.updated_at as booking_updated_at,
+          p.id as parent_id,
+          p.parent_name,
+          p.email as parent_email,
+          p.phone as parent_phone,
+          p.user_id,
+          e.id as event_id,
+          e.title as event_name,
+          e.event_date,
+          e.description as event_description,
+          e.image_url as event_image_url,
+          e.status as event_status,
+          v.id as venue_id,
+          v.venue_name,
+          v.address as venue_address,
+          v.contact_number as venue_contact,
+          c.city_name as venue_city,
+          c.state as venue_state
+        FROM bookings b
+        INNER JOIN parents p ON b.parent_id = p.id
+        LEFT JOIN events e ON b.event_id = e.id
+        LEFT JOIN venues v ON e.venue_id = v.id
+        LEFT JOIN cities c ON v.city_id = c.id
+        WHERE b.booking_ref = ?
+      `, [bookingRef]);
+
+      if (!bookingRows || bookingRows.length === 0) {
+        return null;
+      }
+
+      const booking = bookingRows[0];
+      const bookingId = booking.booking_id;
+
+      // Get children for this booking
+      const [childrenRows] = await promisePool.query(`
+        SELECT DISTINCT
+          c.id as child_id,
+          c.full_name,
+          c.date_of_birth,
+          c.gender,
+          c.school_name,
+          c.created_at,
+          c.updated_at
+        FROM children c
+        INNER JOIN booking_games bg ON c.id = bg.child_id
+        WHERE bg.booking_id = ?
+      `, [bookingId]);
+
+      // Get booking games for each child
+      const children = [];
+      for (const child of childrenRows) {
+        const [gamesRows] = await promisePool.query(`
+          SELECT 
+            bg.id as booking_game_id,
+            bg.game_price,
+            bg.created_at as booked_at,
+            g.id as game_id,
+            g.game_name,
+            g.description as game_description,
+            g.min_age,
+            g.max_age,
+            g.duration_minutes,
+            g.image_url as game_image_url,
+            egs.id as slot_id,
+            egs.start_time as slot_start_time,
+            egs.end_time as slot_end_time,
+            egs.custom_title as slot_custom_title,
+            egs.custom_description as slot_custom_description,
+            egs.custom_price as slot_custom_price,
+            egs.max_participants as slot_max_participants
+          FROM booking_games bg
+          LEFT JOIN baby_games g ON bg.game_id = g.id
+          LEFT JOIN event_games_with_slots egs ON bg.slot_id = egs.id
+          WHERE bg.booking_id = ? AND bg.child_id = ?
+        `, [bookingId, child.child_id]);
+
+        children.push({
+          ...child,
+          booking_games: gamesRows
+        });
+      }
+
+      // Get payment details
+      const [paymentRows] = await promisePool.query(`
+        SELECT 
+          id as payment_id,
+          transaction_id,
+          amount,
+          payment_method,
+          payment_status,
+          created_at as payment_date,
+          updated_at as payment_updated_at
+        FROM payments
+        WHERE booking_id = ?
+      `, [bookingId]);
+
+      return {
+        id: booking.booking_id,
+        booking_ref: booking.booking_ref,
+        status: booking.booking_status,
+        total_amount: booking.total_amount,
+        payment_method: booking.payment_method,
+        payment_status: booking.payment_status,
+        booking_date: booking.booking_date,
+        updated_at: booking.booking_updated_at,
+        parent: {
+          id: booking.parent_id,
+          name: booking.parent_name,
+          email: booking.parent_email,
+          phone: booking.parent_phone,
+          user_id: booking.user_id
+        },
+        event: {
+          id: booking.event_id,
+          name: booking.event_name,
+          date: booking.event_date,
+          description: booking.event_description,
+          image_url: booking.event_image_url,
+          status: booking.event_status,
+          venue: {
+            id: booking.venue_id,
+            name: booking.venue_name,
+            address: booking.venue_address,
+            contact: booking.venue_contact,
+            city: booking.venue_city,
+            state: booking.venue_state
+          }
+        },
+        children: children,
+        payments: paymentRows
+      };
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  /**
    * Delete a booking and all related data
    * @param {number} bookingId - Booking ID to delete
    * @returns {boolean} - True if successful

@@ -177,6 +177,49 @@ exports.getBookingById = async (req, res) => {
 };
 
 /**
+ * Check and get booking details by booking reference
+ * Returns complete booking info with parent, event, children, games, and payments
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * GET /api/bookings/check?booking_ref=PPT251227045
+ */
+exports.checkBookingByReference = async (req, res) => {
+  try {
+    const bookingRef = req.query.booking_ref;
+    
+    if (!bookingRef) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'booking_ref query parameter is required',
+        message: 'Please provide booking reference in the format: ?booking_ref=PPT251227045'
+      });
+    }
+
+    const booking = await BookingModel.getBookingByReference(bookingRef);
+    
+    if (!booking) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Booking not found',
+        message: `No booking found with reference: ${bookingRef}`
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking found successfully',
+      data: booking
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
+  }
+};
+
+/**
  * Delete a booking and all related data
  * @param {object} req - Express request object
  * @param {object} res - Express response object
