@@ -1,6 +1,65 @@
 
 const EmailSettingsModel = require('../model/emailSettingsModel');
 
+// Send email using SMTP settings from database
+exports.sendEmail = async (req, res) => {
+  try {
+    const { to, subject, text, html, cc, bcc, attachments } = req.body;
+
+    // Validate required fields
+    if (!to || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields: to (email address), subject. Either text or html content is required.'
+      });
+    }
+
+    if (!text && !html) {
+      return res.status(400).json({
+        success: false,
+        message: 'Either text or html content is required'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const toEmails = Array.isArray(to) ? to : [to];
+    
+    for (const email of toEmails) {
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid email address: ${email}`
+        });
+      }
+    }
+
+    // Send email
+    const result = await EmailSettingsModel.sendEmail({
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject,
+      text,
+      html,
+      cc,
+      bcc,
+      attachments
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Email sent successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send email',
+      error: error.message
+    });
+  }
+};
+
 // Get email settings (always returns the single row)
 exports.getEmailSettings = async (req, res) => {
   try {
