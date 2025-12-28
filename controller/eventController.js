@@ -99,6 +99,37 @@ exports.deleteEvent = async (req, res) => {
 };
 
 /**
+ * Delete event with ID from request body (alternative endpoint for frontend)
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ *
+ * POST /api/events/delete
+ */
+exports.deleteEventPost = async (req, res) => {
+  const eventId = req.body.id || req.body.event_id;
+  
+  if (!eventId) {
+    return res.status(400).json({ error: 'Event ID is required in request body' });
+  }
+  
+  try {
+    const deleted = await EventModel.delete(eventId);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    // Check if any slots remain for this event
+    const slotsRemain = await EventModel.eventGamesWithSlotsExist(eventId);
+    res.json({
+      message: 'Event deleted successfully',
+      event_id: eventId,
+      event_games_with_slots_deleted: !slotsRemain
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
  * Get completed events with comprehensive statistics
  * @param {object} req - Express request object
  * @param {object} res - Express response object

@@ -22,4 +22,7 @@ router.put('/:id/edit', authenticateEmployee, eventController.editEvent);
 // DELETE /api/events/:id/delete - Delete event and its slots (protected)
 router.delete('/:id/delete', authenticateEmployee, eventController.deleteEvent);
 
+// POST /api/events/delete - Delete event (alternative endpoint for frontend compatibility)
+router.post('/delete', authenticateEmployee, eventController.deleteEventPost);
+
 module.exports = router;
