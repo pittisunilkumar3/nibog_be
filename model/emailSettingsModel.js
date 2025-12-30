@@ -38,6 +38,8 @@ const EmailSettingsModel = {
       throw new Error('Email settings not configured. Please configure SMTP settings first.');
     }
 
+    console.log(`📧 Using SMTP: ${settings.smtp_host}:${settings.smtp_port} (${settings.smtp_username})`);
+
     // Create transporter with database settings
     const transporter = nodemailer.createTransport({
       host: settings.smtp_host,
@@ -46,7 +48,13 @@ const EmailSettingsModel = {
       auth: {
         user: settings.smtp_username,
         pass: settings.smtp_password
-      }
+      },
+      tls: {
+        rejectUnauthorized: false // Accept self-signed certificates
+      },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 5000,
+      socketTimeout: 15000
     });
 
     // Email options

@@ -67,7 +67,8 @@ exports.createBooking = async (req, res) => {
     
     // Send emails asynchronously (don't wait for them to complete)
     sendBookingEmails(bookingDetails, req.body).catch(err => {
-      console.error('Error sending booking emails:', err.message);
+      console.error('Failed to send booking emails:', err.message);
+      console.error('Error details:', err);
     });
     
     res.status(201).json({
@@ -452,7 +453,9 @@ Booking ID: ${booking.id}
     
   } catch (error) {
     console.error('Failed to send booking emails:', error.message);
-    throw error;
+    console.error('Error stack:', error.stack);
+    // Don't throw - we don't want to break the booking process if email fails
+    // throw error;
   }
 }
 
