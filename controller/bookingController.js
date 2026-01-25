@@ -74,6 +74,7 @@ exports.createBooking = async (req, res) => {
     res.status(201).json({
       message: 'Booking created successfully',
       booking_id: result.booking_id,
+      booking_ref: bookingDetails.booking_ref,
       payment_id: result.payment_id || null
     });
   } catch (err) {
@@ -222,6 +223,7 @@ async function sendBookingEmails(booking, requestData) {
             
             <div class="footer">
               <p>This is an automated confirmation email</p>
+              <p><strong>Booking ID:</strong> ${booking.booking_id}</p>
               <p><strong>Booking Date:</strong> ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
               <p>&copy; 2025 Nibog Events. All rights reserved.</p>
             </div>
@@ -261,7 +263,9 @@ Best regards,
 The Nibog Team
 
 ---
+Booking ID: ${booking.booking_id}
 Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+
 © 2025 Nibog Events. All rights reserved.
       `
     };
