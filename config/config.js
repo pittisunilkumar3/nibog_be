@@ -10,7 +10,11 @@ const pool = mysql.createPool({
   database: dbConfig.database,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  // Prevent automatic date conversion to avoid timezone issues
+  // Dates will be returned as strings in 'YYYY-MM-DD' format
+  dateStrings: true,
+  timezone: '+05:30' // Use Indian Standard Time (IST)
 });
 
 // Test the database connection
