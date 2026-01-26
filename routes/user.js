@@ -10,6 +10,12 @@ router.post('/register', userController.register);
 router.post('/login', userController.login);
 // Google Sign-In
 router.post('/google-signin', userController.googleSignIn);
+
+// Password Reset Routes
+router.post('/forgot-password', userController.forgotPassword);
+router.post('/reset-password', userController.resetPassword);
+router.post('/verify-reset-token', userController.verifyResetToken);
+
 // Get profile (protected)
 router.get('/profile', authenticateUser, userController.getProfile);
 // List all users with city/state
