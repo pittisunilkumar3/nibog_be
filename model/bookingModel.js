@@ -23,7 +23,7 @@ const BookingModel = {
           data.status || 'Pending',
           data.total_amount || 0,
           data.payment_method || null,
-          data.payment_status || 'Pending'
+          data.payment_status || 'Paid'
         ]
       );
       const bookingId = bookingResult.insertId;
@@ -69,7 +69,7 @@ const BookingModel = {
             data.payment.transaction_id || null,
             data.payment.amount || 0,
             data.payment.payment_method || null,
-            data.payment.payment_status || 'Pending'
+            data.payment.payment_status || 'Paid'
           ]
         );
         paymentId = paymentResult.insertId;

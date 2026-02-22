@@ -220,7 +220,7 @@ exports.createPayment = async (paymentData) => {
       paymentData.phonepe_transaction_id || null,
       paymentData.amount,
       paymentData.payment_method || 'PhonePe',
-      paymentData.payment_status || 'pending',
+      paymentData.payment_status || 'Paid',
       paymentData.payment_date || new Date(),
       paymentData.gateway_response ? JSON.stringify(paymentData.gateway_response) : null
     ];

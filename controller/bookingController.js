@@ -207,7 +207,7 @@ async function sendBookingEmails(booking, requestData) {
                   </tr>
                   <tr>
                     <td>Payment Status</td>
-                    <td style="text-align: right;"><span style="background-color: ${booking.payment_status === 'Paid' ? '#28a745' : '#ffc107'}; color: white; padding: 3px 10px; border-radius: 3px;">${booking.payment_status}</span></td>
+                    <td style="text-align: right;"><span style="background-color: ${booking.payment_status === 'Paid' || booking.payment_status === 'Confirmed' ? '#28a745' : '#ffc107'}; color: white; padding: 3px 10px; border-radius: 3px;">${booking.payment_status}</span></td>
                   </tr>
                 </table>
               </div>
@@ -388,7 +388,7 @@ Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZon
                   </tr>
                   <tr>
                     <td>Payment Status</td>
-                    <td style="text-align: right;"><span style="background-color: ${booking.payment_status === 'Paid' ? '#28a745' : '#ffc107'}; color: white; padding: 3px 10px; border-radius: 3px;">${booking.payment_status}</span></td>
+                    <td style="text-align: right;"><span style="background-color: ${booking.payment_status === 'Paid' || booking.payment_status === 'Confirmed' ? '#28a745' : '#ffc107'}; color: white; padding: 3px 10px; border-radius: 3px;">${booking.payment_status}</span></td>
                   </tr>
                 </table>
               </div>
