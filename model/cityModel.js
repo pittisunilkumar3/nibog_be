@@ -60,15 +60,15 @@ const CityModel = {
   }
   ,
 
-    // Get all events for a given city
+    // Get all events for a given city (only active and upcoming events)
     async getEventsByCity(cityId) {
       const sql = `
         SELECT e.*, v.venue_name, c.city_name
         FROM events e
         LEFT JOIN venues v ON e.venue_id = v.id
         LEFT JOIN cities c ON e.city_id = c.id
-        WHERE e.city_id = ?
-        ORDER BY e.event_date DESC, e.id DESC
+        WHERE e.city_id = ? AND e.is_active = 1 AND e.event_date >= CURDATE()
+        ORDER BY e.event_date ASC, e.priority ASC
       `;
       const [rows] = await promisePool.query(sql, [cityId]);
       return rows;
