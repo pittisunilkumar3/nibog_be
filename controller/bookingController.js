@@ -39,38 +39,63 @@ exports.updateBooking = async (req, res) => {
  */
 exports.createBooking = async (req, res) => {
   try {
+    // Handle nested structure from webhook (flatten parent, child, booking objects)
+    let bookingData = { ...req.body };
+
+    // If data has nested parent/child/booking structure, flatten it
+    if (req.body.parent && req.body.child && req.body.booking) {
+      bookingData = {
+        user_id: req.body.user_id || null,
+        parent_name: req.body.parent.parent_name,
+        email: req.body.parent.email,
+        phone: req.body.parent.additional_phone || req.body.parent.phone,
+        event_id: req.body.booking.event_id,
+        status: req.body.booking.payment_status === 'Paid' ? 'Confirmed' : 'Pending',
+        total_amount: req.body.total_amount || 0,
+        payment_method: req.body.booking.payment_method,
+        payment_status: req.body.booking.payment_status,
+        children: [{
+          full_name: req.body.child.full_name,
+          date_of_birth: req.body.child.date_of_birth,
+          gender: req.body.child.gender,
+          school_name: req.body.child.school_name,
+          booking_games: req.body.booking_games || []
+        }]
+      };
+    }
+
     // Validate required fields
-    if (!req.body.children || req.body.children.length === 0) {
+    if (!bookingData.children || bookingData.children.length === 0) {
       return res.status(400).json({ error: 'At least one child is required' });
     }
-    
+
     // Validate that at least one child has booking_games
-    const hasBookingGames = req.body.children.some(child => 
+    const hasBookingGames = bookingData.children.some(child =>
       child.booking_games && Array.isArray(child.booking_games) && child.booking_games.length > 0
     );
-    
+
     if (!hasBookingGames) {
       return res.status(400).json({ error: 'At least one child must have booking_games' });
     }
-    
-    if (!req.body.event_id) {
+
+    if (!bookingData.event_id) {
       return res.status(400).json({ error: 'event_id is required' });
     }
-    if (!req.body.parent_name || !req.body.email || !req.body.phone) {
+    if (!bookingData.parent_name || !bookingData.email || !bookingData.phone) {
       return res.status(400).json({ error: 'Parent information (parent_name, email, phone) is required' });
     }
-    
-    const result = await BookingModel.createBooking(req.body);
-    
+
+    const result = await BookingModel.createBooking(bookingData);
+
     // Get complete booking details for email
     const bookingDetails = await BookingModel.getBookingById(result.booking_id);
-    
+
     // Send emails asynchronously (don't wait for them to complete)
-    sendBookingEmails(bookingDetails, req.body).catch(err => {
+    sendBookingEmails(bookingDetails, bookingData).catch(err => {
       console.error('Failed to send booking emails:', err.message);
       console.error('Error details:', err);
     });
-    
+
     res.status(201).json({
       message: 'Booking created successfully',
       booking_id: result.booking_id,

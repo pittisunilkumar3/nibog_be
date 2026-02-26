@@ -6,10 +6,10 @@ const BookingModel = {
     try {
       await conn.beginTransaction();
 
-      // 1. Create parent record
+      // 1. Create parent record with user_id if provided
       const [parentResult] = await conn.query(
-        'INSERT INTO parents (parent_name, email, phone) VALUES (?, ?, ?)',
-        [data.parent_name, data.email, data.phone]
+        'INSERT INTO parents (parent_name, email, phone, user_id) VALUES (?, ?, ?, ?)',
+        [data.parent_name, data.email, data.phone, data.user_id || null]
       );
       const parentId = parentResult.insertId;
 
