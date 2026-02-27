@@ -1,11 +1,29 @@
 const express = require('express');
+const cors = require('cors');
 const dotenv = require('dotenv');
 dotenv.config();
 
 // Initialize and test database connection
 require('./config/config');
 
+const app = express();
 
+// CORS Configuration - Allow requests from frontend
+const corsOptions = {
+  origin: [
+    'http://localhost:3112',
+    'http://localhost:3111',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3112',
+    'http://127.0.0.1:3111',
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 
 const helloworldRoute = require('./routes/helloworld');
 const employeeRoute = require('./routes/employee');
@@ -29,8 +47,7 @@ const eventRoutes = require('./routes/event');
 const addonsRoute = require('./routes/addons');
 const bookingRoute = require('./routes/booking');
 const galleryImagesRoute = require('./routes/galleryImages');
-
-const app = express();
+const paymentRoute = require('./routes/payment');
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -61,6 +78,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/addons', addonsRoute);
 app.use('/api/bookings', bookingRoute);
 app.use('/api/gallery-images', galleryImagesRoute);
+app.use('/api/payments', paymentRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {

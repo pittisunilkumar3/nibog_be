@@ -16,12 +16,18 @@ exports.getAllPayments = async (filters = {}) => {
         p.id as payment_id,
         p.booking_id,
         p.transaction_id,
+        p.phonepe_transaction_id,
         p.amount,
         p.payment_method,
         p.payment_status,
+        p.payment_date,
         p.created_at,
         p.updated_at,
-        b.id as booking_id,
+        p.gateway_response,
+        p.refund_amount,
+        p.refund_date,
+        p.refund_reason,
+        p.admin_notes,
         b.event_id,
         b.booking_ref,
         b.status as booking_status,
@@ -53,8 +59,18 @@ exports.getAllPayments = async (filters = {}) => {
 
     // Add filters
     if (filters.status) {
-      query += ` AND p.payment_status = ?`;
-      params.push(filters.status);
+      // Normalize status filter to match database values
+      const statusValue = filters.status.toLowerCase();
+      if (statusValue === 'successful' || statusValue === 'paid' || statusValue === 'completed') {
+        query += ` AND LOWER(p.payment_status) IN ('successful', 'paid', 'completed')`;
+      } else if (statusValue === 'failed' || statusValue === 'failure') {
+        query += ` AND LOWER(p.payment_status) IN ('failed', 'failure')`;
+      } else if (statusValue === 'refunded' || statusValue === 'refund') {
+        query += ` AND LOWER(p.payment_status) IN ('refunded', 'refund')`;
+      } else {
+        query += ` AND LOWER(p.payment_status) = ?`;
+        params.push(statusValue);
+      }
     }
 
     if (filters.start_date) {
@@ -80,10 +96,10 @@ exports.getAllPayments = async (filters = {}) => {
     if (filters.search) {
       query += ` AND (
         p.transaction_id LIKE ? OR
-        u.name LIKE ? OR
-        u.email LIKE ? OR
-        u.phone LIKE ? OR
-        e.event_title LIKE ?
+        pa.parent_name LIKE ? OR
+        pa.email LIKE ? OR
+        pa.phone LIKE ? OR
+        e.title LIKE ?
       )`;
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
@@ -153,12 +169,18 @@ exports.getPaymentById = async (paymentId) => {
         p.id as payment_id,
         p.booking_id,
         p.transaction_id,
+        p.phonepe_transaction_id,
         p.amount,
         p.payment_method,
         p.payment_status,
+        p.payment_date,
         p.created_at,
         p.updated_at,
-        b.id as booking_id,
+        p.gateway_response,
+        p.refund_amount,
+        p.refund_date,
+        p.refund_reason,
+        p.admin_notes,
         b.event_id,
         b.booking_ref,
         b.status as booking_status,
@@ -332,20 +354,20 @@ exports.deletePayment = async (paymentId) => {
  */
 exports.getPaymentAnalytics = async (filters = {}) => {
   try {
-    // Summary stats
+    // Summary stats - normalize status: 'Paid' and 'successful' both count as successful
     const summaryQuery = `
       SELECT 
-        COALESCE(SUM(CASE WHEN payment_status = 'successful' THEN amount ELSE 0 END), 0) as total_revenue,
+        COALESCE(SUM(CASE WHEN LOWER(p.payment_status) IN ('successful', 'paid', 'completed') THEN p.amount ELSE 0 END), 0) as total_revenue,
         COUNT(*) as total_payments,
-        SUM(CASE WHEN payment_status = 'successful' THEN 1 ELSE 0 END) as successful_payments,
-        SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) as pending_payments,
-        SUM(CASE WHEN payment_status = 'failed' THEN 1 ELSE 0 END) as failed_payments,
-        SUM(CASE WHEN payment_status = 'refunded' THEN 1 ELSE 0 END) as refunded_payments,
-        COALESCE(SUM(refund_amount), 0) as refund_amount,
-        COALESCE(AVG(CASE WHEN payment_status = 'successful' THEN amount END), 0) as average_transaction
+        SUM(CASE WHEN LOWER(p.payment_status) IN ('successful', 'paid', 'completed') THEN 1 ELSE 0 END) as successful_payments,
+        SUM(CASE WHEN LOWER(p.payment_status) = 'pending' THEN 1 ELSE 0 END) as pending_payments,
+        SUM(CASE WHEN LOWER(p.payment_status) IN ('failed', 'failure') THEN 1 ELSE 0 END) as failed_payments,
+        SUM(CASE WHEN LOWER(p.payment_status) IN ('refunded', 'refund') THEN 1 ELSE 0 END) as refunded_payments,
+        COALESCE(SUM(p.refund_amount), 0) as refund_amount,
+        COALESCE(AVG(CASE WHEN LOWER(p.payment_status) IN ('successful', 'paid', 'completed') THEN p.amount END), 0) as average_transaction
       FROM payments p
-      LEFT JOIN bookings b ON p.booking_id = b.booking_id
-      LEFT JOIN events e ON b.event_id = e.event_id
+      LEFT JOIN bookings b ON p.booking_id = b.id
+      LEFT JOIN events e ON b.event_id = e.id
       WHERE 1=1
     `;
 
