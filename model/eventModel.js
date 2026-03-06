@@ -109,8 +109,8 @@ const EventModel = {
     const [eventRows] = await promisePool.query(
       `SELECT e.*, v.venue_name AS venue_name, c.city_name AS city_name
        FROM events e
-       JOIN venues v ON e.venue_id = v.id
-       JOIN cities c ON e.city_id = c.id
+       LEFT JOIN venues v ON e.venue_id = v.id
+       LEFT JOIN cities c ON e.city_id = c.id
        WHERE e.id = ?`,
       [eventId]
     );
@@ -121,7 +121,7 @@ const EventModel = {
     const [slots] = await promisePool.query(
       `SELECT s.*, g.game_name AS game_title, g.description AS game_description
        FROM event_games_with_slots s
-       JOIN baby_games g ON s.game_id = g.id
+       LEFT JOIN baby_games g ON s.game_id = g.id
        WHERE s.event_id = ?`,
       [eventId]
     );
@@ -161,8 +161,8 @@ EventModel.listEventsWithDetails = async function () {
   const [events] = await promisePool.query(
     `SELECT e.*, v.venue_name AS venue_name, c.city_name AS city_name
      FROM events e
-     JOIN venues v ON e.venue_id = v.id
-     JOIN cities c ON e.city_id = c.id
+     LEFT JOIN venues v ON e.venue_id = v.id
+     LEFT JOIN cities c ON e.city_id = c.id
      ORDER BY e.event_date DESC, e.id DESC`
   );
   if (!events.length) return [];
@@ -174,7 +174,7 @@ EventModel.listEventsWithDetails = async function () {
     const [slotRows] = await promisePool.query(
       `SELECT s.*, g.game_name AS game_title, g.description AS game_description
        FROM event_games_with_slots s
-       JOIN baby_games g ON s.game_id = g.id
+       LEFT JOIN baby_games g ON s.game_id = g.id
        WHERE s.event_id IN (${eventIds.map(() => '?').join(',')})`,
       eventIds
     );

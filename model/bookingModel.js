@@ -1,3 +1,13 @@
+// Generate a unique booking reference
+function generateBookingRef() {
+  const date = new Date();
+  const dateStr = date.getFullYear().toString() +
+    String(date.getMonth() + 1).padStart(2, "0") +
+    String(date.getDate()).padStart(2, "0");
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `NIB-${dateStr}-${randomNum}`;
+}
+
 const { promisePool } = require('../config/config');
 
 const BookingModel = {
@@ -13,22 +23,25 @@ const BookingModel = {
       );
       const parentId = parentResult.insertId;
 
-      // 2. Create booking record
+      // 2. Generate booking_ref if not provided
+      const bookingRef = data.booking_ref || generateBookingRef();
+
+      // 3. Create booking record
       const [bookingResult] = await conn.query(
         'INSERT INTO bookings (parent_id, event_id, booking_ref, status, total_amount, payment_method, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
           parentId,
           data.event_id,
-          data.booking_ref || null,
+          bookingRef,
           data.status || 'Pending',
           data.total_amount || 0,
           data.payment_method || null,
-          data.payment_status || 'Paid'
+          data.payment_status || 'Pending'
         ]
       );
       const bookingId = bookingResult.insertId;
 
-      // 3. Create children and their booking_games
+      // 4. Create children and their booking_games
       for (const child of data.children) {
         const [childResult] = await conn.query(
           'INSERT INTO children (parent_id, full_name, date_of_birth, gender, school_name) VALUES (?, ?, ?, ?, ?)',
@@ -59,7 +72,7 @@ const BookingModel = {
         }
       }
 
-      // 4. Create payment record (if provided)
+      // 5. Create payment record (if provided)
       let paymentId = null;
       if (data.payment) {
         const [paymentResult] = await conn.query(
@@ -69,14 +82,14 @@ const BookingModel = {
             data.payment.transaction_id || null,
             data.payment.amount || 0,
             data.payment.payment_method || null,
-            data.payment.payment_status || 'Paid'
+            data.payment.payment_status || 'Pending'
           ]
         );
         paymentId = paymentResult.insertId;
       }
 
       await conn.commit();
-      return { booking_id: bookingId, payment_id: paymentId };
+      return { booking_id: bookingId, booking_ref: bookingRef, payment_id: paymentId };
     } catch (err) {
       await conn.rollback();
       throw err;

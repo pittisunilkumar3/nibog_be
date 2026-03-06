@@ -11,6 +11,8 @@ const app = express();
 // CORS Configuration - Allow requests from frontend
 const corsOptions = {
   origin: [
+    'https://nibog.in',
+    'https://www.nibog.in',
     'http://localhost:3112',
     'http://localhost:3111',
     'http://localhost:3000',
@@ -36,6 +38,7 @@ const generalSettingsRoute = require('./routes/generalSettings');
 const footerSettingsRoute = require('./routes/footerSettings');
 const cityRoute = require('./routes/city');
 const babyGamesRoute = require('./routes/babyGames');
+const babyGamesApiRoute = require('./routes/babyGamesApi');
 const venueRoute = require('./routes/venue');
 const partnersRoute = require('./routes/partners');
 const homepageSectionsRoute = require('./routes/homepageSections');
@@ -48,6 +51,11 @@ const addonsRoute = require('./routes/addons');
 const bookingRoute = require('./routes/booking');
 const galleryImagesRoute = require('./routes/galleryImages');
 const paymentRoute = require('./routes/payment');
+const promoCodesRoute = require('./routes/promoCodes');
+const dashboardRoute = require('./routes/dashboard');
+app.use('/api/promo-codes', promoCodesRoute);
+app.use('/api/dashboard', dashboardRoute);
+const pendingBookingsRoute = require('./routes/pendingBookings');
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -67,6 +75,7 @@ app.use('/api/general-settings', generalSettingsRoute);
 app.use('/api/footer-settings', footerSettingsRoute);
 app.use('/api/city', cityRoute);
 app.use('/api/baby-games', babyGamesRoute);
+app.use('/api/babygames', babyGamesApiRoute);
 app.use('/api/venue', venueRoute);
 app.use('/api/partners', partnersRoute);
 app.use('/api/homepage-sections', homepageSectionsRoute);
@@ -79,10 +88,10 @@ app.use('/api/addons', addonsRoute);
 app.use('/api/bookings', bookingRoute);
 app.use('/api/gallery-images', galleryImagesRoute);
 app.use('/api/payments', paymentRoute);
+app.use('/api/promo-codes', promoCodesRoute);
+app.use('/api/pending-bookings', pendingBookingsRoute);
 
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-

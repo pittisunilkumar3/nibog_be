@@ -1,12 +1,4 @@
 
-// Helper function to normalize payment status
-function normalizePaymentStatus(status) {
-  if (!status) return "Pending";
-  const normalized = status.toString().toLowerCase().trim();
-  const successValues = ["paid", "success", "successful", "completed", "confirmed"];
-  return successValues.includes(normalized) ? "Paid" : "Pending";
-}
-
 const BookingModel = require('../model/bookingModel');
 const EmailSettingsModel = require('../model/emailSettingsModel');
 
@@ -58,10 +50,10 @@ exports.createBooking = async (req, res) => {
         email: req.body.parent.email,
         phone: req.body.parent.additional_phone || req.body.parent.phone,
         event_id: req.body.booking.event_id,
-        status: normalizePaymentStatus(req.body.booking.payment_status) === 'Paid' ? 'Confirmed' : 'Pending',
+        status: req.body.booking.payment_status === 'Paid' ? 'Confirmed' : 'Pending',
         total_amount: req.body.total_amount || 0,
         payment_method: req.body.booking.payment_method,
-        payment_status: normalizePaymentStatus(req.body.booking.payment_status),
+        payment_status: req.body.booking.payment_status,
         children: [{
           full_name: req.body.child.full_name,
           date_of_birth: req.body.child.date_of_birth,
@@ -71,18 +63,6 @@ exports.createBooking = async (req, res) => {
         }]
       };
     }
-    // Handle payment object structure from admin manual bookings
-    if (req.body.payment && typeof req.body.payment === "object") {
-      bookingData.payment_status = normalizePaymentStatus(req.body.payment.payment_status);
-      bookingData.payment_method = req.body.payment.payment_method;
-      bookingData.transaction_id = req.body.payment.transaction_id;
-      bookingData.total_amount = req.body.payment.amount || bookingData.total_amount;
-      // If payment is already paid (e.g., Cash payment), confirm the booking
-      if (bookingData.payment_status === "Paid") {
-        bookingData.status = "Confirmed";
-      }
-    }
-
 
     // Validate required fields
     if (!bookingData.children || bookingData.children.length === 0) {
@@ -300,7 +280,7 @@ Games: ${(child.booking_games || []).map(g => g.game_name || 'N/A').join(', ')}
 
 💰 Payment Summary:
 Total Amount: ₹${parseFloat(booking.total_amount).toFixed(2)}
-Payment Status: ${booking.payment_status}
+Payment Status: ${booking.status}
 
 We look forward to seeing you!
 
@@ -480,7 +460,7 @@ Games: ${(child.booking_games || []).map(g => g.game_name || 'N/A').join(', ')}
 
 💰 Payment Summary:
 Total Amount: ₹${parseFloat(booking.total_amount).toFixed(2)}
-Payment Status: ${booking.payment_status}
+Payment Status: ${booking.status}
 
 ⏰ Booking Time: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
 

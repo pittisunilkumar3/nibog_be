@@ -25,7 +25,9 @@ const CityModel = {
         cityMap[venue.city_id].total_venues++;
       }
     });
-    return Object.values(cityMap);
+    // Only return cities that have upcoming events
+      const citiesWithEvents = Object.values(cityMap).filter(city => city.total_events > 0);
+      return citiesWithEvents;
   },
   async get(id) {
     const [cityRows] = await promisePool.query('SELECT * FROM cities WHERE id = ?', [id]);
@@ -190,7 +192,9 @@ const CityModel = {
         }
       });
 
-      return Object.values(cityMap);
+      // Only return cities that have upcoming events
+      const citiesWithEvents = Object.values(cityMap).filter(city => city.total_events > 0);
+      return citiesWithEvents;
     }
 };
 
