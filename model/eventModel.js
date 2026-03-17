@@ -156,13 +156,16 @@ EventModel.delete = async function(eventId) {
 
 
 // List all events with their slots, venue, city, and game info
-EventModel.listEventsWithDetails = async function () {
+EventModel.listEventsWithDetails = async function (activeOnly = true) {
   // Get all events with venue and city names
+  // Filter by is_active = 1 for public/frontend API
+  const whereClause = activeOnly ? 'WHERE e.is_active = 1' : '';
   const [events] = await promisePool.query(
     `SELECT e.*, v.venue_name AS venue_name, c.city_name AS city_name
      FROM events e
      LEFT JOIN venues v ON e.venue_id = v.id
      LEFT JOIN cities c ON e.city_id = c.id
+     ${whereClause}
      ORDER BY e.event_date DESC, e.id DESC`
   );
   if (!events.length) return [];

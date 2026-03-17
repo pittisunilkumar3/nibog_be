@@ -8,10 +8,10 @@ const CityModel = {
 
   // List cities with their venues and total venues count
   async listWithVenues() {
-    // Get all cities
-    const [cities] = await promisePool.query('SELECT * FROM cities ORDER BY city_name ASC');
+    // Get all active cities
+    const [cities] = await promisePool.query('SELECT * FROM cities WHERE is_active = 1 ORDER BY city_name ASC');
     // Get all venues
-    const [venues] = await promisePool.query('SELECT * FROM venues');
+    const [venues] = await promisePool.query('SELECT * FROM venues WHERE is_active = 1');
     // Map venues to cities
     const cityMap = {};
     cities.forEach(city => {

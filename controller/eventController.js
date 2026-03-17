@@ -159,10 +159,15 @@ exports.getCompletedEventsWithStats = async (req, res) => {
  * @param {object} res - Express response object
  *
  * GET /api/events/list
+ * Query params:
+ *   - all: if set to 'true', returns all events (including inactive) - for admin use
  */
 exports.listEventsWithDetails = async (req, res) => {
   try {
-    const events = await EventModel.listEventsWithDetails();
+    // Check if 'all' query param is set to get all events (for admin)
+    // By default, only return active events for public/frontend
+    const activeOnly = req.query.all !== 'true';
+    const events = await EventModel.listEventsWithDetails(activeOnly);
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message });
