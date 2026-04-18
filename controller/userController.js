@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
     await UserModel.updateLastLogin(user.user_id);
-    const token = jwt.sign({ user_id: user.user_id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ user_id: user.user_id, email: user.email }, JWT_SECRET);
     res.json({ success: true, token, user });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Login failed', error: error.message });
@@ -152,8 +152,7 @@ exports.googleSignIn = async (req, res) => {
     // Generate JWT token
     const jwtToken = jwt.sign(
       { user_id: user.user_id, email: user.email, auth_provider: 'google' }, 
-      JWT_SECRET, 
-      { expiresIn: '7d' }
+      JWT_SECRET
     );
 
     res.json({ 

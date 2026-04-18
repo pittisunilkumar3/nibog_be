@@ -140,8 +140,7 @@ exports.login = async (req, res) => {
         employee_id: employee.employee_id,
         is_superadmin: employee.is_superadmin
       },
-      JWT_SECRET,
-      { expiresIn: '24h' }
+      JWT_SECRET
     );
 
     // Remove password from response
