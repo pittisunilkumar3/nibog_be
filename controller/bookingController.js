@@ -59,7 +59,7 @@ exports.createBooking = async (req, res) => {
         phone: req.body.parent.additional_phone || req.body.parent.phone,
         event_id: req.body.booking.event_id,
         status: normalizePaymentStatus(req.body.booking.payment_status) === 'Paid' ? 'Confirmed' : 'Pending',
-        total_amount: req.body.total_amount || 0,
+        total_amount: req.body.total_amount || req.body.booking.total_amount || 0,
         payment_method: req.body.booking.payment_method,
         payment_status: normalizePaymentStatus(req.body.booking.payment_status),
         children: [{
@@ -103,6 +103,24 @@ exports.createBooking = async (req, res) => {
     }
     if (!bookingData.parent_name || !bookingData.email || !bookingData.phone) {
       return res.status(400).json({ error: 'Parent information (parent_name, email, phone) is required' });
+    }
+
+    // Safety net: auto-calculate total_amount from booking_games if it's 0 or missing
+    if (!bookingData.total_amount || parseFloat(bookingData.total_amount) === 0) {
+      let calculatedTotal = 0;
+      if (bookingData.children) {
+        for (const child of bookingData.children) {
+          if (child.booking_games && Array.isArray(child.booking_games)) {
+            for (const game of child.booking_games) {
+              calculatedTotal += parseFloat(game.game_price || 0);
+            }
+          }
+        }
+      }
+      if (calculatedTotal > 0) {
+        bookingData.total_amount = calculatedTotal;
+        console.log(`⚠️ Auto-calculated total_amount for booking: ₹${calculatedTotal} (was 0 or missing)`);
+      }
     }
 
     const result = await BookingModel.createBooking(bookingData);
@@ -149,9 +167,19 @@ async function sendBookingEmails(booking, requestData) {
           </tr>
         `).join('');
       
+      // Calculate age in months (based on event date if available, otherwise current date)
+      let ageInMonths = 'N/A';
+      if (child.date_of_birth) {
+        const birthDate = new Date(child.date_of_birth);
+        const referenceDate = booking.event?.date ? new Date(booking.event.date) : new Date();
+        const months = (referenceDate.getFullYear() - birthDate.getFullYear()) * 12 + 
+                       (referenceDate.getMonth() - birthDate.getMonth());
+        ageInMonths = Math.max(0, months) + ' months';
+      }
+      
       return {
         name: child.full_name,
-        age: child.date_of_birth ? new Date().getFullYear() - new Date(child.date_of_birth).getFullYear() : 'N/A',
+        age: ageInMonths,
         gender: child.gender,
         school: child.school_name || 'N/A',
         games: games
@@ -225,7 +253,7 @@ async function sendBookingEmails(booking, requestData) {
                 ${childrenDetails.map(child => `
                   <div class="child-card">
                     <h4 style="margin: 0 0 10px 0; color: #667eea;">👤 ${child.name}</h4>
-                    <p style="margin: 5px 0;"><strong>Age:</strong> ${child.age} years | <strong>Gender:</strong> ${child.gender} | <strong>School:</strong> ${child.school}</p>
+                    <p style="margin: 5px 0;"><strong>Age:</strong> ${child.age} | <strong>Gender:</strong> ${child.gender} | <strong>School:</strong> ${child.school}</p>
                     <h5 style="margin: 10px 0 5px 0;">Games Booked:</h5>
                     <table>
                       <thead>
@@ -292,10 +320,10 @@ Your booking has been confirmed successfully!
 - Status: ${booking.status}
 
 👶 Children & Games:
-${booking.children.map(child => `
-${child.full_name} (${child.date_of_birth ? new Date().getFullYear() - new Date(child.date_of_birth).getFullYear() : 'N/A'} years, ${child.gender})
-School: ${child.school_name || 'N/A'}
-Games: ${(child.booking_games || []).map(g => g.game_name || 'N/A').join(', ')}
+${childrenDetails.map(child => `
+${child.name} (${child.age}, ${child.gender})
+School: ${child.school}
+Games: ${(child.games.match(/<td[^>]*>([^<]+)<\/td>/g) || []).map(g => g.replace(/<[^>]+>/g, '')).filter(g => g.trim()).slice(0,1).join(', ')}
 `).join('\n')}
 
 💰 Payment Summary:
@@ -402,7 +430,7 @@ Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZon
                 ${childrenDetails.map(child => `
                   <div class="child-card">
                     <h4 style="margin: 0 0 10px 0; color: #ff6b6b;">👤 ${child.name}</h4>
-                    <p style="margin: 5px 0;"><strong>Age:</strong> ${child.age} years | <strong>Gender:</strong> ${child.gender} | <strong>School:</strong> ${child.school}</p>
+                    <p style="margin: 5px 0;"><strong>Age:</strong> ${child.age} | <strong>Gender:</strong> ${child.gender} | <strong>School:</strong> ${child.school}</p>
                     <h5 style="margin: 10px 0 5px 0;">Games Booked:</h5>
                     <table>
                       <thead>
@@ -471,11 +499,11 @@ A new booking has been created in the system.
 - Venue: ${booking.event?.venue?.name || 'N/A'}
 - Status: ${booking.status}
 
-👶 Children Details (${booking.children.length}):
-${booking.children.map(child => `
-${child.full_name} (${child.date_of_birth ? new Date().getFullYear() - new Date(child.date_of_birth).getFullYear() : 'N/A'} years, ${child.gender})
-School: ${child.school_name || 'N/A'}
-Games: ${(child.booking_games || []).map(g => g.game_name || 'N/A').join(', ')}
+👶 Children Details (${childrenDetails.length}):
+${childrenDetails.map(child => `
+${child.name} (${child.age}, ${child.gender})
+School: ${child.school}
+Games: ${(child.games.match(/<td[^>]*>([^<]+)<\/td>/g) || []).map(g => g.replace(/<[^>]+>/g, '')).filter(g => g.trim()).slice(0,1).join(', ')}
 `).join('\n')}
 
 💰 Payment Summary:

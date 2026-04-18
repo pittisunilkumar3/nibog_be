@@ -4,22 +4,22 @@ const { promisePool } = require('../config/config');
 const EventModel = {
   async create(eventData) {
     const {
-      title, description, city_id, venue_id, event_date, status = 'Draft', is_active = 1, image_url = null, priority = 1
+      title, description, city_id, venue_id, event_date, start_time = null, end_time = null, status = 'Draft', is_active = 1, image_url = null, priority = 1
     } = eventData;
     const [result] = await promisePool.query(
-      'INSERT INTO events (title, description, city_id, venue_id, event_date, status, is_active, image_url, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [title, description, city_id, venue_id, event_date, status, is_active, image_url, priority]
+      'INSERT INTO events (title, description, city_id, venue_id, event_date, start_time, end_time, status, is_active, image_url, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, description, city_id, venue_id, event_date, start_time, end_time, status, is_active, image_url, priority]
     );
     return result.insertId;
   },
 
   async update(eventId, eventData) {
     const {
-      title, description, city_id, venue_id, event_date, status = 'Draft', is_active = 1, image_url = null, priority = 1
+      title, description, city_id, venue_id, event_date, start_time = null, end_time = null, status = 'Draft', is_active = 1, image_url = null, priority = 1
     } = eventData;
     await promisePool.query(
-      'UPDATE events SET title=?, description=?, city_id=?, venue_id=?, event_date=?, status=?, is_active=?, image_url=?, priority=? WHERE id=?',
-      [title, description, city_id, venue_id, event_date, status, is_active, image_url, priority, eventId]
+      'UPDATE events SET title=?, description=?, city_id=?, venue_id=?, event_date=?, start_time=?, end_time=?, status=?, is_active=?, image_url=?, priority=? WHERE id=?',
+      [title, description, city_id, venue_id, event_date, start_time, end_time, status, is_active, image_url, priority, eventId]
     );
   },
 
