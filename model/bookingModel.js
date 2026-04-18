@@ -293,7 +293,8 @@ const BookingModel = {
               egs.max_participants as available_spots,
               egs.custom_title as slot_custom_title,
               egs.custom_description as slot_custom_description,
-              egs.custom_price as slot_custom_price
+              egs.custom_price as slot_custom_price,
+              egs.note as slot_note
             FROM booking_games bg
             LEFT JOIN baby_games g ON bg.game_id = g.id
             LEFT JOIN event_games_with_slots egs ON bg.slot_id = egs.id
@@ -734,7 +735,8 @@ const BookingModel = {
             egs.custom_title as slot_custom_title,
             egs.custom_description as slot_custom_description,
             egs.custom_price as slot_custom_price,
-            egs.max_participants as slot_max_participants
+            egs.max_participants as slot_max_participants,
+            egs.note as slot_note
           FROM booking_games bg
           LEFT JOIN baby_games g ON bg.game_id = g.id
           LEFT JOIN event_games_with_slots egs ON bg.slot_id = egs.id
@@ -886,7 +888,8 @@ const BookingModel = {
             egs.custom_title as slot_custom_title,
             egs.custom_description as slot_custom_description,
             egs.custom_price as slot_custom_price,
-            egs.max_participants as slot_max_participants
+            egs.max_participants as slot_max_participants,
+            egs.note as slot_note
           FROM booking_games bg
           LEFT JOIN baby_games g ON bg.game_id = g.id
           LEFT JOIN event_games_with_slots egs ON bg.slot_id = egs.id

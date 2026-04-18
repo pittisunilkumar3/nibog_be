@@ -156,16 +156,34 @@ async function sendBookingEmails(booking, requestData) {
     const adminEmail = process.env.ADMIN_EMAIL || 'newindiababyolympics@gmail.com';
     // ...existing code...
     
+    // Helper to format 24h time to 12h AM/PM
+    const formatTime = (time) => {
+      if (!time) return 'N/A';
+      const [h, m] = time.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const h12 = hour % 12 || 12;
+      return `${h12}:${m} ${ampm}`;
+    };
+
     // Format children and games details
     const childrenDetails = booking.children.map(child => {
       const games = (child.booking_games || [])
-        .map(g => `
+        .map(g => {
+          const timeSlot = g.slot_start_time && g.slot_end_time 
+            ? `${formatTime(g.slot_start_time)} - ${formatTime(g.slot_end_time)}` 
+            : 'N/A';
+          const noteRow = g.slot_note 
+            ? `<tr><td colspan="3" style="padding: 6px 8px; border: 1px solid #ddd; background-color: #fff3f3; color: #dc2626; font-size: 13px; font-weight: 600;">⚠️ ${g.slot_note}</td></tr>` 
+            : '';
+          return `
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd;">${g.game_name || 'N/A'}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${g.slot_start_time || 'N/A'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${timeSlot}</td>
             <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹${parseFloat(g.game_price || 0).toFixed(2)}</td>
           </tr>
-        `).join('');
+          ${noteRow}`;
+        }).join('');
       
       // Calculate age in months (based on event date if available, otherwise current date)
       let ageInMonths = 'N/A';
@@ -223,7 +241,8 @@ async function sendBookingEmails(booking, requestData) {
               <p>Your booking has been confirmed successfully! We're excited to host your event.</p>
               
               <div class="booking-ref">
-                📋 Booking Reference: ${booking.booking_ref}
+                📋 Booking Reference: ${booking.booking_ref}<br>
+                <span style="font-size: 14px;">🆔 Booking ID: ${booking.booking_id}</span>
               </div>
 
               <div class="info-section">
@@ -312,6 +331,7 @@ Dear ${requestData.parent_name},
 Your booking has been confirmed successfully!
 
 📋 Booking Reference: ${booking.booking_ref}
+🆔 Booking ID: ${booking.booking_id}
 
 📅 Event Details:
 - Event: ${booking.event?.name || 'N/A'}
@@ -382,7 +402,8 @@ Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZon
               <p>A new booking has been created in the system.</p>
               
               <div class="booking-ref">
-                📋 Booking Reference: ${booking.booking_ref}
+                📋 Booking Reference: ${booking.booking_ref}<br>
+                <span style="font-size: 14px;">🆔 Booking ID: ${booking.booking_id}</span>
               </div>
 
               <div class="info-section">
@@ -487,6 +508,7 @@ Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZon
 A new booking has been created in the system.
 
 📋 Booking Reference: ${booking.booking_ref}
+🆔 Booking ID: ${booking.booking_id}
 
 👤 Parent Information:
 - Name: ${requestData.parent_name}
