@@ -764,6 +764,7 @@ const BookingModel = {
       `, [bookingId]);
 
       return {
+        booking_id: booking.booking_id,
         id: booking.booking_id,
         booking_ref: booking.booking_ref,
         status: booking.booking_status,
@@ -917,6 +918,7 @@ const BookingModel = {
       `, [bookingId]);
 
       return {
+        booking_id: booking.booking_id,
         id: booking.booking_id,
         booking_ref: booking.booking_ref,
         status: booking.booking_status,

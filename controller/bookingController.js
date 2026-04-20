@@ -128,6 +128,11 @@ exports.createBooking = async (req, res) => {
     // Get complete booking details for email
     const bookingDetails = await BookingModel.getBookingById(result.booking_id);
 
+    // Ensure booking_id is available (the model returns "id", but email templates expect "booking_id")
+    if (bookingDetails && !bookingDetails.booking_id) {
+      bookingDetails.booking_id = bookingDetails.id || result.booking_id;
+    }
+
     // Send emails asynchronously (don't wait for them to complete)
     sendBookingEmails(bookingDetails, bookingData).catch(err => {
       console.error('Failed to send booking emails:', err.message);
