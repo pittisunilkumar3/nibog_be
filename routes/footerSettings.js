@@ -12,4 +12,7 @@ router.get('/with-social', getSettingsWithSocialLinks);
 // Update footer settings (protected)
 router.put('/', authenticateEmployee, updateSettings);
 
+// Create/upsert footer settings (protected) - used by superadmin footer-settings page
+router.post('/', authenticateEmployee, updateSettings);
+
 module.exports = router;

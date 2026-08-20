@@ -30,6 +30,15 @@ const FooterSettingsModel = {
     values.push(1); // id=1
     const sql = `UPDATE footer_settings SET ${fields.join(', ')} WHERE id = ?`;
     const [result] = await promisePool.execute(sql, values);
+
+    // Upsert: if no row existed, create it (used by the POST create endpoint)
+    if (result.affectedRows === 0) {
+      const keys = Object.keys(data);
+      const cols = ['id', ...keys];
+      const placeholders = cols.map(() => '?').join(', ');
+      const insertSql = `INSERT INTO footer_settings (${cols.join(', ')}) VALUES (${placeholders})`;
+      await promisePool.execute(insertSql, [1, ...keys.map(k => data[k])]);
+    }
     return result;
   }
 };
