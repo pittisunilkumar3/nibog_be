@@ -157,8 +157,8 @@ async function sendBookingEmails(booking, requestData) {
   try {
     const parentEmail = requestData.email;
     // ...existing code...
-    // const adminEmail = 'newindiababyolympics@gmail.com';
-    const adminEmail = process.env.ADMIN_EMAIL || 'newindiababyolympics@gmail.com';
+    // const adminEmail = 'Nibog100@gmail.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'Nibog100@gmail.com';
     // ...existing code...
     
     // Helper to format 24h time to 12h AM/PM
@@ -322,7 +322,7 @@ async function sendBookingEmails(booking, requestData) {
               <p>This is an automated confirmation email</p>
               <p><strong>Booking ID:</strong> ${booking.booking_id}</p>
               <p><strong>Booking Date:</strong> ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
-              <p>&copy; 2025 Nibog Events. All rights reserved.</p>
+              <p>&copy; 2026 Nibog Events. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -364,7 +364,7 @@ The Nibog Team
 Booking ID: ${booking.booking_id}
 Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
 
-© 2025 Nibog Events. All rights reserved.
+© 2026 Nibog Events. All rights reserved.
       `
     };
 
@@ -501,7 +501,7 @@ Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZon
             <div class="footer">
               <p>This is an automated admin notification</p>
               <p><strong>Booking ID:</strong> ${booking.booking_id}</p>
-              <p>&copy; 2025 Nibog Events Admin Panel</p>
+              <p>&copy; 2026 Nibog Events Admin Panel</p>
             </div>
           </div>
         </body>
@@ -541,7 +541,7 @@ Payment Status: ${booking.payment_status}
 
 ---
 Booking ID: ${booking.id}
-© 2025 Nibog Events Admin Panel
+© 2026 Nibog Events Admin Panel
       `
     };
 
