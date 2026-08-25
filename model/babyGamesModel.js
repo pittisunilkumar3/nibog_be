@@ -11,11 +11,12 @@ const BabyGamesModel = {
   },
   async create(data) {
     const {
-      game_name, image_url, description, min_age, max_age, duration_minutes, categories, priority, is_active
+      game_name, image_url, description, min_age, max_age, duration_minutes, categories, priority, is_active,
+      show_on_frontend
     } = data;
     const [result] = await promisePool.query(
-      'INSERT INTO baby_games (game_name, image_url, description, min_age, max_age, duration_minutes, categories, priority, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [game_name, image_url, description, min_age, max_age, duration_minutes, categories, priority, is_active]
+      'INSERT INTO baby_games (game_name, image_url, description, min_age, max_age, duration_minutes, categories, priority, is_active, show_on_frontend) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [game_name, image_url, description, min_age, max_age, duration_minutes, categories, priority, is_active, show_on_frontend ? 1 : 0]
     );
     return result;
   },
