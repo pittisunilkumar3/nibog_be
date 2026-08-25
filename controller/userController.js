@@ -60,6 +60,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
     await UserModel.updateLastLogin(user.user_id);
+    // Lifetime token - no expiration
     const token = jwt.sign({ user_id: user.user_id, email: user.email }, JWT_SECRET);
     res.json({ success: true, token, user });
   } catch (error) {
@@ -130,28 +131,40 @@ exports.googleSignIn = async (req, res) => {
     } else {
       // Check if email already exists (for linking existing accounts)
       const existingUser = await UserModel.getByEmail(email);
-      if (existingUser && existingUser.auth_provider === 'local') {
-        // Email exists with local auth - you may want to handle account linking here
-        return res.status(409).json({ 
-          success: false, 
-          message: 'An account with this email already exists. Please log in with your password or reset it.' 
+      if (existingUser) {
+        // Link the Google account to the existing user so they can sign in
+        // with either Google or their password going forward.
+        // Only proceed if Google verified the email ownership.
+        if (email_verified) {
+          await UserModel.linkGoogleAccount(existingUser.user_id, google_id);
+          // Optionally update name/email/verified flag
+          if (full_name && !existingUser.full_name) {
+            await UserModel.updateGoogleUser(existingUser.user_id, { full_name, email_verified });
+          }
+          await UserModel.updateLastLogin(existingUser.user_id);
+          user = await UserModel.getById(existingUser.user_id);
+        } else {
+          return res.status(409).json({
+            success: false,
+            message: 'An account with this email already exists. Please log in with your password.'
+          });
+        }
+      } else {
+        // Create new user
+        user = await UserModel.createGoogleUser({
+          full_name,
+          email,
+          google_id,
+          email_verified,
+          phone: '', // Google doesn't provide phone by default
+          city_id: null
         });
       }
-
-      // Create new user
-      user = await UserModel.createGoogleUser({
-        full_name,
-        email,
-        google_id,
-        email_verified,
-        phone: '', // Google doesn't provide phone by default
-        city_id: null
-      });
     }
 
-    // Generate JWT token
+    // Generate JWT token - lifetime, no expiration
     const jwtToken = jwt.sign(
-      { user_id: user.user_id, email: user.email, auth_provider: 'google' }, 
+      { user_id: user.user_id, email: user.email, auth_provider: 'google' },
       JWT_SECRET
     );
 
@@ -208,8 +221,9 @@ exports.forgotPassword = async (req, res) => {
       });
     }
 
-    // Check if user signed up with Google
-    if (user.auth_provider === 'google') {
+    // Check if user signed up with Google only (no password set)
+    // Linked accounts (have both google_id and password_hash) can still reset.
+    if (user.auth_provider === 'google' && (!user.password_hash || user.password_hash === '')) {
       return res.status(400).json({ 
         success: false, 
         message: 'This account uses Google Sign-In. Please log in with Google instead.' 

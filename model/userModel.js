@@ -69,6 +69,15 @@ const UserModel = {
     );
     return this.getById(result.insertId);
   },
+  // Link a Google account to an existing user (e.g. user registered with email/password first)
+  // We keep auth_provider unchanged so password-based flows (login / reset) still work.
+  async linkGoogleAccount(user_id, google_id) {
+    const [result] = await promisePool.query(
+      'UPDATE users SET google_id = ?, email_verified = 1 WHERE user_id = ?',
+      [google_id, user_id]
+    );
+    return result.affectedRows;
+  },
   async updateGoogleUser(user_id, userData) {
     const { full_name, email, email_verified } = userData;
     const fields = [];
