@@ -53,6 +53,8 @@ const galleryImagesRoute = require('./routes/galleryImages');
 const paymentRoute = require('./routes/payment');
 const promoCodesRoute = require('./routes/promoCodes');
 const dashboardRoute = require('./routes/dashboard');
+const certificateTemplatesRoute = require('./routes/certificateTemplates');
+const certificatesRoute = require('./routes/certificates');
 app.use('/api/promo-codes', promoCodesRoute);
 app.use('/api/dashboard', dashboardRoute);
 const pendingBookingsRoute = require('./routes/pendingBookings');
@@ -84,6 +86,9 @@ app.use('/api/testimonials', testimonialsRoute);
 app.use('/api/user', userRoute);
 
 app.use('/api/events', eventRoutes);
+app.use('/api/certificate-templates', certificateTemplatesRoute);
+app.use('/api/certificates', certificatesRoute);
+app.use('/api/certificate', certificatesRoute);
 app.use('/api/addons', addonsRoute);
 app.use('/api/bookings', bookingRoute);
 app.use('/api/gallery-images', galleryImagesRoute);

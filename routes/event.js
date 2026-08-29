@@ -4,6 +4,10 @@ const eventController = require('../controller/eventController');
 
 const { authenticateEmployee } = require('../controller/authMiddleware');
 
+const certificateController = require('../controller/certificateController');
+// GET /api/events/participants - participants of an event for certificate generation
+router.get('/participants', certificateController.eventParticipants);
+
 // GET /api/events/completed - Get completed events with statistics (public)
 router.get('/completed', eventController.getCompletedEventsWithStats);
 
