@@ -158,8 +158,11 @@ EventModel.delete = async function(eventId) {
 // List all events with their slots, venue, city, and game info
 EventModel.listEventsWithDetails = async function (activeOnly = true) {
   // Get all events with venue and city names
-  // Filter by is_active = 1 for public/frontend API
-  const whereClause = activeOnly ? 'WHERE e.is_active = 1' : '';
+  // Filter by is_active = 1 for public/frontend API.
+  // FIX: also exclude events in deactivated cities (c.is_active = 0) — otherwise the
+  // public events page shows them but the register page (which only lists active
+  // booking cities) rejects the city with "Events in this city are coming soon!".
+  const whereClause = activeOnly ? 'WHERE e.is_active = 1 AND (c.is_active IS NULL OR c.is_active = 1)' : '';
   const [events] = await promisePool.query(
     `SELECT e.*, v.venue_name AS venue_name, c.city_name AS city_name
      FROM events e
