@@ -24,6 +24,41 @@ function renderCertificateHTML(template, cert) {
     border = `border: ${bs.border_width || 2}px ${bs.border_style || 'solid'} ${bs.border_color || '#000000'};`;
   }
 
+  // ── Ornamental frame (enhanced design system) ──
+  const ornament = bs.ornament || 'none';
+  let innerFrame = '';
+  if (ornament === 'double' || ornament === 'inset') {
+    const inset = ornament === 'double' ? 14 : 10;
+    const innerW = bs.inner_border_width || 1;
+    const innerC = bs.inner_border_color || bs.border_color || '#000000';
+    innerFrame = `<div style="position:absolute;left:${inset}px;top:${inset}px;right:${inset}px;bottom:${inset}px;border:${innerW}px solid ${innerC};pointer-events:none;"></div>`;
+  }
+  // Decorative corner flourishes
+  let corners = '';
+  if (bs.corner_ornament) {
+    const c = bs.inner_border_color || bs.border_color || '#000000';
+    const corner = `<div style="width:28px;height:28px;border-top:3px solid ${c};border-left:3px solid ${c};"></div>`;
+    corners = `<div style="position:absolute;left:10px;top:10px;">${corner}</div>
+      <div style="position:absolute;right:10px;top:10px;transform:rotate(90deg);">${corner}</div>
+      <div style="position:absolute;right:10px;bottom:10px;transform:rotate(180deg);">${corner}</div>
+      <div style="position:absolute;left:10px;bottom:10px;transform:rotate(270deg);">${corner}</div>`;
+  }
+  // Circular seal
+  let seal = '';
+  if (bs.seal && bs.seal.enabled) {
+    const sc = bs.seal.color || bs.border_color || '#000000';
+    const sx = bs.seal.x || 85, sy = bs.seal.y || 85;
+    const st = bs.seal.text || '★';
+    seal = `<div style="position:absolute;left:${sx}%;top:${sy}%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;border:3px double ${sc};display:flex;align-items:center;justify-content:center;color:${sc};font-family:Georgia,serif;font-size:${st.length > 4 ? 11 : 22}px;font-weight:bold;letter-spacing:1px;opacity:0.9;">${st}</div>`;
+  }
+  // Watermark
+  let watermark = '';
+  if (bs.watermark && bs.watermark.enabled) {
+    const wc = bs.watermark.color || '#000000';
+    const wo = bs.watermark.opacity != null ? bs.watermark.opacity : 0.04;
+    watermark = `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-24deg);font-family:Georgia,serif;font-size:170px;font-weight:bold;color:${wc};opacity:${wo};white-space:nowrap;pointer-events:none;user-select:none;">${bs.watermark.text || 'NIBOG'}</div>`;
+  }
+
   const dims = template.paper_size === 'a3' ? { w: 1123, h: 794 } : template.paper_size === 'letter' ? { w: 1056, h: 816 } : { w: 842, h: 595 };
   const page = template.orientation === 'portrait' ? { w: dims.h, h: dims.w } : dims;
 
@@ -58,10 +93,14 @@ function renderCertificateHTML(template, cert) {
 <html><head><meta charset="utf-8"><title>Certificate ${cert.certificate_number || cert.id}</title></head>
 <body style="margin:0;padding:0;">
 <div style="position:relative;width:${page.w}px;height:${page.h}px;${background}${border}overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
-  <div style="position:absolute;left:${titleStyle.x || 50}%;top:${titleStyle.y || 15}%;transform:translate(-50%,-50%);width:${titleStyle.max_width || 80}%;text-align:${titleStyle.alignment || 'center'};font-family:${titleStyle.font_family || 'Arial'};font-size:${titleStyle.font_size || 36}px;font-weight:${titleStyle.font_weight || 'bold'};color:${titleStyle.color || '#000000'};${titleStyle.text_transform ? `text-transform:${titleStyle.text_transform};` : ''}">${replaceVars(template.certificate_title || 'Certificate of Participation')}</div>
-  ${(apprec.text || template.appreciation_text) ? `<div style="position:absolute;left:${apprec.x || 50}%;top:${apprec.y || 40}%;transform:translate(-50%,-50%);width:${apprec.max_width || 70}%;text-align:${apprec.alignment || 'center'};font-family:${apprec.font_family || 'Arial'};font-size:${apprec.font_size || 16}px;color:${apprec.color || '#333333'};">${replaceVars(apprec.text || template.appreciation_text || '')}</div>` : ''}
+  ${watermark}
+  ${innerFrame}
+  ${corners}
+  <div style="position:absolute;left:${titleStyle.x || 50}%;top:${titleStyle.y || 15}%;transform:translate(-50%,-50%);width:${titleStyle.max_width || 80}%;text-align:${titleStyle.alignment || 'center'};font-family:${titleStyle.font_family || 'Arial'};font-size:${titleStyle.font_size || 36}px;font-weight:${titleStyle.font_weight || 'bold'};color:${titleStyle.color || '#000000'};${titleStyle.letter_spacing ? `letter-spacing:${titleStyle.letter_spacing}px;` : ''}${titleStyle.text_transform ? `text-transform:${titleStyle.text_transform};` : ''}">${replaceVars(template.certificate_title || 'Certificate of Participation')}</div>
+  ${(apprec.text || template.appreciation_text) ? `<div style="position:absolute;left:${apprec.x || 50}%;top:${apprec.y || 40}%;transform:translate(-50%,-50%);width:${apprec.max_width || 70}%;text-align:${apprec.alignment || 'center'};font-family:${apprec.font_family || 'Arial'};font-size:${apprec.font_size || 16}px;${apprec.font_style ? `font-style:${apprec.font_style};` : ''}color:${apprec.color || '#333333'};">${replaceVars(apprec.text || template.appreciation_text || '')}</div>` : ''}
   ${fieldsHtml}
-  <div style="position:absolute;left:${sigStyle.x || 80}%;top:${sigStyle.y || 85}%;transform:translate(-50%,-50%);text-align:center;font-size:14px;color:#333;">${fieldValues.signature}</div>
+  <div style="position:absolute;left:${sigStyle.x || 80}%;top:${sigStyle.y || 85}%;transform:translate(-50%,-50%);text-align:center;font-family:${sigStyle.font_family || 'Arial'};font-size:${sigStyle.font_size || 14}px;color:${sigStyle.color || '#333'};">${fieldValues.signature}<div style="width:140px;border-top:1px solid ${sigStyle.color || '#333'};margin-top:4px;"></div></div>
+  ${seal}
 </div>
 </body></html>`;
 }
