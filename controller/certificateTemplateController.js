@@ -81,3 +81,24 @@ exports.remove = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Upload certificate background image (called by admin certificate designer).
+// Saves into the FRONTEND upload dir so /uploads/... serves it dynamically.
+const fs = require('fs');
+const path = require('path');
+
+exports.uploadBackground = (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(req.file.mimetype)) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({ error: 'Invalid file type. Only JPG, PNG, WEBP allowed.' });
+    }
+    const file_path = `/uploads/certificatetemplates/${req.file.filename}`;
+    res.json({ success: true, file_path, filename: req.file.filename, url: file_path, path: file_path });
+  } catch (err) {
+    console.error('uploadBackground error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
