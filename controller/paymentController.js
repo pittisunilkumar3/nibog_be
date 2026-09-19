@@ -1,4 +1,5 @@
 const PaymentModel = require('../model/paymentModel');
+const PendingBooking = require('../model/pendingBookingModel');
 
 /**
  * Get all payments with filters
@@ -301,6 +302,43 @@ exports.updatePaymentStatus = async (req, res) => {
       message: 'Failed to update payment status',
       error: error.message
     });
+  }
+};
+
+// POST /api/payments/notify-failed - send payment failed / retry email
+exports.notifyPaymentFailed = async (req, res) => {
+  try {
+    const { transaction_id, email, parent_name, total_amount, event_name } = req.body || {};
+    let data = { email, parent_name, total_amount, event_name };
+
+    // Look up pending booking data by transaction if provided
+    if (transaction_id) {
+      const pending = await PendingBooking.getByTransactionId(transaction_id);
+      if (pending && pending.booking_data) {
+        try {
+          const bd = typeof pending.booking_data === 'string' ? JSON.parse(pending.booking_data) : pending.booking_data;
+          data = {
+            email: bd.email || email,
+            parent_name: bd.parentName || parent_name,
+            total_amount: bd.totalAmount != null ? bd.totalAmount : total_amount,
+            event_name: event_name
+          };
+        } catch (parseErr) { /* fall back to explicit fields */ }
+      }
+    }
+
+    if (!data.email) {
+      return res.status(400).json({ success: false, error: 'Email not found for this transaction' });
+    }
+
+    await require('./bookingController').sendPaymentFailedEmail(
+      { total_amount: data.total_amount, event: { name: data.event_name } },
+      { email: data.email, parent_name: data.parent_name }
+    );
+
+    res.json({ success: true, message: 'Payment failed email sent to ' + data.email });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 

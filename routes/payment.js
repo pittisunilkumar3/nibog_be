@@ -7,6 +7,9 @@ const { authenticateEmployee } = require('../controller/authMiddleware');
 // POST /api/payments - Create payment
 router.post('/', paymentController.createPayment);
 
+// POST /api/payments/notify-failed - payment failed / retry email
+router.post('/notify-failed', paymentController.notifyPaymentFailed);
+
 // Protected routes (require authentication)
 // GET /api/payments - Get all payments with filters
 router.get('/', authenticateEmployee, paymentController.getAllPayments);
