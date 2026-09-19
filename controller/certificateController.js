@@ -224,3 +224,57 @@ exports.eventParticipants = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// POST /api/certificates/bulk-generate {event_id, template_id}
+// Server-side batch generation for ALL participants of an event (skips existing).
+exports.bulkGenerate = async (req, res) => {
+  try {
+    const { event_id, template_id } = req.body || {};
+    if (!event_id || !template_id) return res.status(400).json({ error: 'event_id and template_id are required' });
+    const template = await CertificateTemplateModel.getById(template_id);
+    if (!template) return res.status(404).json({ error: 'Certificate template not found' });
+
+    const participants = await CertificateModel.eventParticipants(event_id);
+    const existing = await CertificateModel.list({ eventId: event_id, templateId: template_id, limit: 10000 });
+    const have = new Set(existing.map((c) => `${c.child_id || c.participant_name}`));
+
+    const stamp = Date.now();
+    const values = [];
+    participants.forEach((pt, i) => {
+      const key = `${pt.child_id || pt.child_name}`;
+      if (have.has(key)) return;
+      have.add(key);
+      values.push([
+        `NIB-CERT-${stamp}-${String(i).padStart(4, '0')}`,
+        template_id,
+        event_id,
+        pt.game_id || null,
+        null,
+        pt.parent_id || null,
+        pt.child_id || null,
+        pt.child_name || '',
+        JSON.stringify({
+          participant_name: pt.child_name || '',
+          game_name: pt.game_name || '',
+          date_of_birth: pt.date_of_birth || '',
+          parent_name: pt.parent_name || '',
+        }),
+        'generated',
+      ]);
+    });
+
+    let created = 0;
+    if (values.length) {
+      await require('../config/config').promisePool.query(
+        `INSERT INTO certificates (certificate_number, template_id, event_id, game_id, user_id, parent_id, child_id, participant_name, certificate_data, status) VALUES ?`,
+        [values]
+      );
+      created = values.length;
+    }
+    const certificates = await CertificateModel.list({ eventId: event_id, templateId: template_id, limit: 10000 });
+    res.json({ created, skipped: participants.length - created, total: certificates.length, certificates });
+  } catch (err) {
+    console.error('cert bulkGenerate:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
