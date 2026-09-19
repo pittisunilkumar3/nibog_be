@@ -405,7 +405,7 @@ Booking Date: ${new Date(booking.booking_date).toLocaleString('en-IN', { timeZon
     // Email to Admin - New Booking Notification
     const adminEmailContent = {
       to: adminEmail,
-      subject: `🔔 New Booking Created - ${booking.booking_ref}`,
+      subject: `🔔 New Booking Created - Booking #${booking.booking_id}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -583,7 +583,7 @@ Booking ID: ${booking.id}
       EmailSettingsModel.sendEmail(adminEmailContent)
     ]);
 
-    console.log(`✓ Booking emails sent successfully for booking ${booking.booking_ref}`);
+    console.log(`✓ Booking emails sent successfully for booking #${booking.booking_id}`);
     console.log(`  - Parent: ${parentEmail}`);
     console.log(`  - Admin: ${adminEmail}`);
     
