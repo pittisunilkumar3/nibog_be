@@ -74,7 +74,7 @@ function renderCertificateHTML(template, cert) {
         let months = (ref.getFullYear() - dob.getFullYear()) * 12 + (ref.getMonth() - dob.getMonth());
         if (ref.getDate() < dob.getDate()) months -= 1;
         months = Math.max(0, months);
-        ageText = months < 24 ? months + ' months' : Math.floor(months / 12) + ' years';
+        ageText = months + ' months';
       }
     }
   }
