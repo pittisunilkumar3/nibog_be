@@ -40,12 +40,14 @@ const CertificateModel = {
     const [rows] = await promisePool.query(
       `SELECT c.*, t.name AS template_name, t.type AS template_type,
               e.title AS event_title, e.event_date AS event_date,
-              v.venue_name AS venue_name, ci.city_name AS city_name
+              v.venue_name AS venue_name, ci.city_name AS city_name,
+              pa.parent_name AS parent_name, pa.email AS parent_email
        FROM certificates c
        LEFT JOIN certificate_templates t ON c.template_id = t.id
        LEFT JOIN events e ON c.event_id = e.id
        LEFT JOIN venues v ON e.venue_id = v.id
        LEFT JOIN cities ci ON e.city_id = ci.id
+       LEFT JOIN parents pa ON c.parent_id = pa.id
        WHERE c.id = ? LIMIT 1`,
       [id]
     );
