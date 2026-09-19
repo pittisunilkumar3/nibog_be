@@ -10,7 +10,7 @@ function renderCertificateHTML(template, cert) {
   const sigStyle = template.signature_style || {};
 
   let background = 'background: #ffffff;';
-  if (bs.type === 'image' && template.background_image) {
+  if ((bs.type === 'image' || !bs.type) && template.background_image) {
     background = `background: url('${template.background_image}') center/cover no-repeat;`;
   } else if (bs.type === 'solid' && bs.solid_color) {
     background = `background: ${bs.solid_color};`;
@@ -275,6 +275,53 @@ exports.bulkGenerate = async (req, res) => {
     res.json({ created, skipped: participants.length - created, total: certificates.length, certificates });
   } catch (err) {
     console.error('cert bulkGenerate:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/certificates/bulk-render {event_id, template_id}
+// Renders certificates fully in-memory (NO database writes).
+exports.bulkRender = async (req, res) => {
+  try {
+    const { event_id, template_id } = req.body || {};
+    if (!event_id || !template_id) return res.status(400).json({ error: 'event_id and template_id are required' });
+    const template = await CertificateTemplateModel.getById(template_id);
+    if (!template) return res.status(404).json({ error: 'Certificate template not found' });
+    const participants = await CertificateModel.eventParticipants(event_id);
+    const [evRows] = await require('../config/config').promisePool.query(
+      `SELECT e.title AS event_title, e.event_date AS event_date, v.venue_name, c.city_name
+       FROM events e LEFT JOIN venues v ON e.venue_id = v.id LEFT JOIN cities c ON e.city_id = c.id
+       WHERE e.id = ? LIMIT 1`, [event_id]);
+    const ev = evRows[0] || {};
+    const stamp = Date.now();
+    const items = (participants || []).map((pt, i) => {
+      const cert = {
+        id: 0,
+        certificate_number: `NIB-CERT-${stamp}-${String(i).padStart(4, '0')}`,
+        participant_name: pt.child_name || '',
+        certificate_data: {
+          participant_name: pt.child_name || '',
+          game_name: pt.game_name || '',
+          date_of_birth: pt.date_of_birth || '',
+          parent_name: pt.parent_name || '',
+        },
+        event_title: ev.event_title || '',
+        event_date: ev.event_date || '',
+        venue_name: ev.venue_name || '',
+        city_name: ev.city_name || '',
+      };
+      return {
+        child_name: pt.child_name || '',
+        parent_email: pt.email || '',
+        parent_name: pt.parent_name || '',
+        game_name: pt.game_name || '',
+        certificate_number: cert.certificate_number,
+        html: renderCertificateHTML(template, cert),
+      };
+    });
+    res.json({ total: items.length, items });
+  } catch (err) {
+    console.error('cert bulkRender:', err.message);
     res.status(500).json({ error: err.message });
   }
 };

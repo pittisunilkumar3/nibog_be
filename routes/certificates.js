@@ -5,6 +5,7 @@ const c = require('../controller/certificateController');
 // Mounted at /api/certificates AND /api/certificate
 router.post('/generate-single', c.generateSingle);
 router.post('/bulk-generate', c.bulkGenerate);
+router.post('/bulk-render', c.bulkRender);
 router.get('/get-all', c.getAll);
 router.post('/get', c.getSingle);
 router.post('/get-single', c.getSingle);
