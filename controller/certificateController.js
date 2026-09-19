@@ -62,6 +62,26 @@ function renderCertificateHTML(template, cert) {
   const dims = template.paper_size === 'a3' ? { w: 1123, h: 794 } : template.paper_size === 'letter' ? { w: 1056, h: 816 } : { w: 842, h: 595 };
   const page = template.orientation === 'portrait' ? { w: dims.h, h: dims.w } : dims;
 
+  // Compute child age (from DOB, relative to event date) and event year
+  const dobRaw = data.date_of_birth || data.dob || (cert.certificate_data && (cert.certificate_data.date_of_birth || cert.certificate_data.dob)) || null;
+  let ageText = '';
+  if (dobRaw) {
+    const dob = new Date(dobRaw);
+    if (!isNaN(dob.getTime())) {
+      const refSrc = data.event_date || cert.event_date || null;
+      const ref = refSrc ? new Date(refSrc) : new Date();
+      if (!isNaN(ref.getTime())) {
+        let months = (ref.getFullYear() - dob.getFullYear()) * 12 + (ref.getMonth() - dob.getMonth());
+        if (ref.getDate() < dob.getDate()) months -= 1;
+        months = Math.max(0, months);
+        ageText = months < 24 ? months + ' months' : Math.floor(months / 12) + ' years';
+      }
+    }
+  }
+  const yearSrc = data.event_date || cert.event_date || null;
+  const yearDate = yearSrc ? new Date(yearSrc) : null;
+  const yearText = yearDate && !isNaN(yearDate.getTime()) ? String(yearDate.getFullYear()) : '';
+
   const replaceVars = (text) => String(text || '')
     .replace(/\{participant_name\}/g, data.participant_name || cert.participant_name || '')
     .replace(/\{event_name\}/g, data.event_name || cert.event_title || '')
@@ -70,7 +90,9 @@ function renderCertificateHTML(template, cert) {
     .replace(/\{city_name\}/g, data.city_name || '')
     .replace(/\{certificate_number\}/g, cert.certificate_number || '')
     .replace(/\{game_name\}/g, data.game_name || '')
-    .replace(/\{parent_name\}/g, data.parent_name || '');
+    .replace(/\{parent_name\}/g, data.parent_name || '')
+    .replace(/\{age\}/g, data.age || ageText || '')
+    .replace(/\{year\}/g, data.year || yearText || '');
 
   const fieldValues = {
     participant_name: data.participant_name || cert.participant_name || '',
