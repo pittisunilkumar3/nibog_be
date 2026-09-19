@@ -87,7 +87,10 @@ function renderCertificateHTML(template, cert) {
   const cityV = data.city_name || cert.city_name || '';
   const placeText = venueV && cityV ? (venueV.toLowerCase() === cityV.toLowerCase() ? cityV : venueV + ', ' + cityV) : (venueV || cityV || '');
 
-  const replaceVars = (text) => String(text || '')
+  // Inline rich-text highlight: [[text|color]] or [[text|color|b]] for bold
+  const rich = (t) => String(t || '').replace(/\[\[([^\[\]|]+)\|([^\[\]|]+)(?:\|([^\[\]|]*))?\]\]/g, (_m, txt, color, bold) => '<span style="color:' + color + ';' + (bold ? 'font-weight:bold;' : '') + '">' + txt + '</span>');
+
+  const replaceVarsRaw = (text) => String(text || '')
     .replace(/\{participant_name\}/g, data.participant_name || cert.participant_name || '')
     .replace(/\{event_name\}/g, data.event_name || cert.event_title || '')
     .replace(/\{event_date\}/g, data.event_date || cert.event_date || '')
@@ -99,6 +102,7 @@ function renderCertificateHTML(template, cert) {
     .replace(/\{age\}/g, data.age || ageText || '')
     .replace(/\{year\}/g, data.year || yearText || '')
     .replace(/\{place\}/g, data.place || placeText || '');
+  const replaceVars = (text) => rich(replaceVarsRaw(text));
 
   const fieldValues = {
     participant_name: data.participant_name || cert.participant_name || '',
