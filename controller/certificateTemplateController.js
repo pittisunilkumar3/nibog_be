@@ -45,7 +45,7 @@ exports.getByType = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const data = req.body || {};
-    if (!data.name || !data.description || !data.type) {
+    if (!data.name || !data.type) {
       return res.status(400).json({ error: 'name, description and type are required' });
     }
     const template = await CertificateTemplateModel.create(data);
