@@ -17,6 +17,12 @@ router.post('/', bookingController.createBooking);
 // GET /api/bookings/user/:userId - Get user profile with all booking details
 router.get('/user/:userId', bookingController.getUserProfileWithBookings);
 
+// ==== Ticket scanning (Flutter scanner app) ====
+// GET /api/bookings/ticket/verify/:id - validate only
+router.get('/ticket/verify/:id', bookingController.verifyTicket);
+// POST /api/bookings/ticket/checkin/:id - validate + check in (QR expires)
+router.post('/ticket/checkin/:id', bookingController.checkinTicket);
+
 // GET /api/bookings/:id - Get single booking details by ID
 router.get('/:id', bookingController.getBookingById);
 

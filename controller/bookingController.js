@@ -9,6 +9,7 @@ function normalizePaymentStatus(status) {
 
 const BookingModel = require('../model/bookingModel');
 const EmailSettingsModel = require('../model/emailSettingsModel');
+const { promisePool } = require('../config/config');
 const QRCode = require('qrcode');
 const { jsPDF } = require('jspdf');
 
@@ -1093,3 +1094,124 @@ The Nibog Team`;
 }
 
 exports.sendPaymentFailedEmail = sendPaymentFailedEmail;
+
+
+// ================= TICKET VERIFICATION & CHECK-IN (Flutter scanner app) =================
+function __ticketSummary(booking) {
+  const event = booking.event || {};
+  const venue = event.venue || {};
+  return {
+    booking_id: booking.booking_id || booking.id,
+    booking_ref: booking.booking_ref,
+    event_name: event.name || null,
+    event_date: event.date || null,
+    venue_name: venue.name || null,
+    parent_name: booking.parent_name || null,
+    phone: booking.phone || null,
+    total_amount: booking.total_amount,
+    payment_status: booking.payment_status,
+    status: booking.status,
+    children: (booking.children || []).map(c => ({
+      name: c.full_name,
+      games: (c.booking_games || []).map(g => g.game_name)
+    }))
+  };
+}
+
+// GET /api/bookings/ticket/verify/:id - validate ticket only (no mutation)
+exports.verifyTicket = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.json({ valid: false, reason: 'invalid_qr', message: 'Invalid ticket code' });
+    }
+
+    const booking = await BookingModel.getBookingById(id);
+    if (!booking) {
+      return res.json({ valid: false, reason: 'not_found', message: 'Ticket not found. Invalid or fake QR code.' });
+    }
+
+    const payStatus = normalizePaymentStatus(booking.payment_status);
+    if (payStatus !== 'Paid') {
+      return res.json({ valid: false, reason: 'unpaid', message: 'Payment not completed for this ticket', booking: __ticketSummary(booking) });
+    }
+    if (String(booking.status || '').toLowerCase() === 'cancelled') {
+      return res.json({ valid: false, reason: 'cancelled', message: 'This booking was cancelled', booking: __ticketSummary(booking) });
+    }
+
+    let checkedInAt = null, checkedInBy = null;
+    try {
+      const [rows] = await promisePool.query('SELECT checked_in_at, checked_in_by FROM bookings WHERE id = ?', [id]);
+      if (rows && rows[0]) { checkedInAt = rows[0].checked_in_at; checkedInBy = rows[0].checked_in_by; }
+    } catch (e) { /* columns may not exist yet */ }
+
+    if (checkedInAt) {
+      return res.json({
+        valid: false,
+        reason: 'already_used',
+        message: 'Ticket already checked in - EXPIRED (do not accept)',
+        checked_in_at: checkedInAt,
+        checked_in_by: checkedInBy,
+        booking: __ticketSummary(booking)
+      });
+    }
+
+    return res.json({ valid: true, reason: 'ok', message: 'Ticket is VALID - not yet checked in', booking: __ticketSummary(booking) });
+  } catch (err) {
+    res.status(500).json({ valid: false, reason: 'error', message: err.message });
+  }
+};
+
+// POST /api/bookings/ticket/checkin/:id - validate + check in (QR expires after this)
+exports.checkinTicket = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.json({ valid: false, reason: 'invalid_qr', message: 'Invalid ticket code' });
+    }
+
+    const booking = await BookingModel.getBookingById(id);
+    if (!booking) {
+      return res.json({ valid: false, reason: 'not_found', message: 'Ticket not found. Invalid or fake QR code.' });
+    }
+
+    const payStatus = normalizePaymentStatus(booking.payment_status);
+    if (payStatus !== 'Paid') {
+      return res.json({ valid: false, reason: 'unpaid', message: 'Payment not completed - cannot check in', booking: __ticketSummary(booking) });
+    }
+    if (String(booking.status || '').toLowerCase() === 'cancelled') {
+      return res.json({ valid: false, reason: 'cancelled', message: 'This booking was cancelled', booking: __ticketSummary(booking) });
+    }
+
+    let checkedInAt = null, checkedInBy = null;
+    try {
+      const [rows] = await promisePool.query('SELECT checked_in_at, checked_in_by FROM bookings WHERE id = ?', [id]);
+      if (rows && rows[0]) { checkedInAt = rows[0].checked_in_at; checkedInBy = rows[0].checked_in_by; }
+    } catch (e) { /* columns may not exist yet */ }
+
+    if (checkedInAt) {
+      return res.json({
+        valid: false,
+        reason: 'already_used',
+        message: 'ALREADY CHECKED IN - ticket EXPIRED (entry denied)',
+        checked_in_at: checkedInAt,
+        checked_in_by: checkedInBy,
+        booking: __ticketSummary(booking)
+      });
+    }
+
+    const by = (req.body && req.body.checked_in_by) || 'scanner-app';
+    await promisePool.query('UPDATE bookings SET checked_in_at = NOW(), checked_in_by = ? WHERE id = ?', [by, id]);
+
+    return res.json({
+      valid: true,
+      reason: 'checked_in',
+      message: 'Checked in successfully. Ticket is now EXPIRED.',
+      checked_in_at: new Date().toISOString(),
+      checked_in_by: by,
+      booking: __ticketSummary(booking)
+    });
+  } catch (err) {
+    res.status(500).json({ valid: false, reason: 'error', message: err.message });
+  }
+};
