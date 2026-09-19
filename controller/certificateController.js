@@ -82,27 +82,36 @@ function renderCertificateHTML(template, cert) {
   const yearDate = yearSrc ? new Date(yearSrc) : null;
   const yearText = yearDate && !isNaN(yearDate.getTime()) ? String(yearDate.getFullYear()) : '';
 
+  // Place: venue + city combined (from request data or event join)
+  const venueV = data.venue_name || cert.venue_name || '';
+  const cityV = data.city_name || cert.city_name || '';
+  const placeText = venueV && cityV ? (venueV.toLowerCase() === cityV.toLowerCase() ? cityV : venueV + ', ' + cityV) : (venueV || cityV || '');
+
   const replaceVars = (text) => String(text || '')
     .replace(/\{participant_name\}/g, data.participant_name || cert.participant_name || '')
     .replace(/\{event_name\}/g, data.event_name || cert.event_title || '')
-    .replace(/\{event_date\}/g, data.event_date || '')
-    .replace(/\{venue_name\}/g, data.venue_name || '')
-    .replace(/\{city_name\}/g, data.city_name || '')
+    .replace(/\{event_date\}/g, data.event_date || cert.event_date || '')
+    .replace(/\{venue_name\}/g, venueV || '')
+    .replace(/\{city_name\}/g, cityV || '')
     .replace(/\{certificate_number\}/g, cert.certificate_number || '')
     .replace(/\{game_name\}/g, data.game_name || '')
     .replace(/\{parent_name\}/g, data.parent_name || '')
     .replace(/\{age\}/g, data.age || ageText || '')
-    .replace(/\{year\}/g, data.year || yearText || '');
+    .replace(/\{year\}/g, data.year || yearText || '')
+    .replace(/\{place\}/g, data.place || placeText || '');
 
   const fieldValues = {
     participant_name: data.participant_name || cert.participant_name || '',
     event_name: data.event_name || cert.event_title || '',
     event_date: data.event_date || '',
-    venue_name: data.venue_name || '',
-    city_name: data.city_name || '',
+    venue_name: venueV || '',
+    city_name: cityV || '',
     certificate_number: cert.certificate_number || '',
     game_name: data.game_name || '',
     parent_name: data.parent_name || '',
+    place: placeText || '',
+    year: yearText || '',
+    age: ageText || '',
     signature: (sigStyle.signature_type === 'image' && template.signature_image) ? `<img src="${template.signature_image}" style="height:60px;object-fit:contain;" alt="signature" />` : (sigStyle.text || 'Authorized Signature')
   };
 
