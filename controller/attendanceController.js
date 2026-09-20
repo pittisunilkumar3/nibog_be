@@ -3,6 +3,8 @@ exports.report = async (req, res) => {
   try {
     const pool = require('../config/config').promisePool;
     const paidIn = `LOWER(b.payment_status) IN ('paid','completed','success')`;
+    const evId = parseInt(req.query.event_id, 10);
+    const evFilter = evId ? `AND b.event_id = ${evId}` : '';
 
     // summary + per-event
     const [events] = await pool.query(`
@@ -16,6 +18,7 @@ exports.report = async (req, res) => {
       LEFT JOIN venues v ON e.venue_id = v.id
       LEFT JOIN cities c ON e.city_id = c.id
       WHERE ${paidIn}
+      ${evFilter}
       GROUP BY b.event_id, e.title, e.event_date, v.venue_name, c.city_name
       ORDER BY e.event_date DESC, attended DESC
     `);
@@ -40,6 +43,7 @@ exports.report = async (req, res) => {
       LEFT JOIN events e ON e.id = b.event_id
       LEFT JOIN children ch ON ch.id = (SELECT bg.child_id FROM booking_games bg WHERE bg.booking_id = b.id LIMIT 1)
       WHERE b.checked_in_at IS NOT NULL
+      ${evFilter}
       ORDER BY b.checked_in_at DESC
       LIMIT 50
     `);
