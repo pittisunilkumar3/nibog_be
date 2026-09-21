@@ -30,6 +30,7 @@ app.use(cors(corsOptions));
 const helloworldRoute = require('./routes/helloworld');
 const attendanceRouter = require('./routes/attendance');
 const whatsappMetaRouter = require('./routes/whatsappMeta');
+const whatsappTemplateRouter = require('./routes/whatsappTemplate');
 const employeeRoute = require('./routes/employee');
 const privacyPolicyRoute = require('./routes/privacyPolicy');
 const termsRoute = require('./routes/terms');
@@ -60,6 +61,7 @@ const certificatesRoute = require('./routes/certificates');
 app.use('/api/promo-codes', promoCodesRoute);
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/whatsapp-meta', whatsappMetaRouter);
+app.use('/api/whatsapp-meta/templates', whatsappTemplateRouter);
 app.use('/api/dashboard', dashboardRoute);
 const pendingBookingsRoute = require('./routes/pendingBookings');
 
