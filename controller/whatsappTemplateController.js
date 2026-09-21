@@ -28,9 +28,30 @@ const buildComponents = (header_text, body_text, footer_text) => {
   return { components, varCount: vars.length };
 };
 
+const DEFAULT_BOOKING_TEMPLATE = {
+  template_name: 'booking_confirmation',
+  language: 'en',
+  category: 'UTILITY',
+  header_text: 'Booking Confirmed',
+  body_text: 'Hi {{1}}, your booking for {{2}} has been confirmed! \n\nBooking ID: {{3}}\nGames: {{4}}\nVenue: {{5}}\n\nPlease show this message at the entry. We look forward to seeing you!',
+  footer_text: '- Team NIBOG',
+};
+
+async function ensureDefaultTemplate() {
+  try {
+    const [rows] = await pool.query('SELECT id FROM whatsapp_templates WHERE is_default = 1 LIMIT 1');
+    if (rows.length) return;
+    await pool.query(
+      'INSERT INTO whatsapp_templates (template_name, language, category, status, header_text, body_text, footer_text, is_default) VALUES (?,?,?,?,?,?,?,1)',
+      [DEFAULT_BOOKING_TEMPLATE.template_name, DEFAULT_BOOKING_TEMPLATE.language, DEFAULT_BOOKING_TEMPLATE.category, 'NOT_SUBMITTED', DEFAULT_BOOKING_TEMPLATE.header_text, DEFAULT_BOOKING_TEMPLATE.body_text, DEFAULT_BOOKING_TEMPLATE.footer_text]
+    );
+  } catch (e) { console.error('ensureDefaultTemplate:', e.message); }
+}
+
 // GET /api/whatsapp-meta/templates
 exports.list = async (req, res) => {
   try {
+    await ensureDefaultTemplate();
     const [rows] = await pool.query('SELECT * FROM whatsapp_templates ORDER BY updated_at DESC');
     res.json({ templates: rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -159,6 +180,7 @@ exports.remove = async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM whatsapp_templates WHERE id=? LIMIT 1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Template not found' });
     const t = rows[0];
+    if (t.is_default) return res.status(400).json({ error: 'The default booking template cannot be deleted — you can edit it instead' });
     const cfg = await getConfig();
     if (cfg && cfg.access_token && cfg.waba_id) {
       const ver = cfg.api_version || 'v21.0';
