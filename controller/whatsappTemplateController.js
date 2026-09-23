@@ -121,9 +121,17 @@ exports.submit = async (req, res) => {
     const ver = cfg.api_version || 'v21.0';
 
     // convert named variables {{parent_name}} -> {{1}}, {{2}}... (Meta numbering)
+    // and remember the ordered names so sends can map values by position
     let metaBody = String(body_text);
-    const named = [...new Set((metaBody.match(/\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}/g) || []))];
-    named.forEach((v, i) => { metaBody = metaBody.split(v).join('{{' + (i + 1) + '}}'); });
+    const seen = new Set();
+    const orderedVars = [];
+    for (const m of metaBody.matchAll(/\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g)) {
+      if (!seen.has(m[1])) { seen.add(m[1]); orderedVars.push(m[1]); }
+    }
+    for (const name of orderedVars) {
+      metaBody = metaBody.split(`{{${name}}}`).join(`{{${orderedVars.indexOf(name) + 1}}}`);
+    }
+    const bodyVarsJson = orderedVars.length ? JSON.stringify(orderedVars) : null;
 
     const components = await buildComponents(header_text, metaBody, footer_text, header_format, cfg, ver);
     const body_text_out = metaBody;
@@ -157,13 +165,13 @@ exports.submit = async (req, res) => {
 
     if (id) {
       await pool.query(
-        'UPDATE whatsapp_templates SET template_name=?, language=?, category=?, status=?, rejected_reason=NULL, header_format=?, header_text=?, body_text=?, footer_text=?, meta_template_id=?, meta_components=? WHERE id=?',
-        [name, language, category.toUpperCase(), status, String(header_format).toLowerCase(), header_text, body_text_out, footer_text, metaId, JSON.stringify(components), id]
+        'UPDATE whatsapp_templates SET template_name=?, language=?, category=?, status=?, rejected_reason=NULL, header_format=?, header_text=?, body_text=?, footer_text=?, body_variables=?, meta_template_id=?, meta_components=? WHERE id=?',
+        [name, language, category.toUpperCase(), status, String(header_format).toLowerCase(), header_text, body_text_out, footer_text, bodyVarsJson, metaId, JSON.stringify(components), id]
       );
     } else {
       await pool.query(
-        'INSERT INTO whatsapp_templates (template_name, language, category, status, header_format, header_text, body_text, footer_text, meta_template_id, meta_components) VALUES (?,?,?,?,?,?,?,?,?,?)',
-        [name, language, category.toUpperCase(), status, String(header_format).toLowerCase(), header_text, body_text_out, footer_text, metaId, JSON.stringify(components)]
+        'INSERT INTO whatsapp_templates (template_name, language, category, status, header_format, header_text, body_text, footer_text, body_variables, meta_template_id, meta_components) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        [name, language, category.toUpperCase(), status, String(header_format).toLowerCase(), header_text, body_text_out, footer_text, bodyVarsJson, metaId, JSON.stringify(components)]
       );
     }
     res.json({ success: true, status, meta_template_id: metaId, message: `"${name}" ${find.j.data && find.j.data.length ? 'updated' : 'submitted'} on Meta — status: ${status}` });

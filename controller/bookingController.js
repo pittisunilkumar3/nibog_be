@@ -218,13 +218,22 @@ async function sendBookingWhatsApp(booking, requestData) {
     const components = [];
     // only include header params when the approved template actually has a DOCUMENT header
     if (String(tpl.header_format || '').toLowerCase() === 'document' && headerComponent) components.push(headerComponent);
-    components.push({ type: 'body', parameters: [
-      { type: 'text', text: parent.parent_name || 'Parent' },
-      { type: 'text', text: eventName },
-      { type: 'text', text: String(bookingId) },
-      { type: 'text', text: games || '-' },
-      { type: 'text', text: venue },
-    ]});
+    // map values by the template's stored variable order (falls back to the default order)
+    const valueMap = {
+      parent_name: parent.parent_name || 'Parent',
+      child_name: parent.parent_name || 'Parent',
+      event_name: eventName,
+      booking_id: String(bookingId),
+      games_list: games || '-',
+      games: games || '-',
+      venue: venue,
+    };
+    let varNames = ['parent_name', 'event_name', 'booking_id', 'games_list', 'venue'];
+    try {
+      const stored = JSON.parse(tpl.body_variables || 'null');
+      if (Array.isArray(stored) && stored.length) varNames = stored;
+    } catch (_) {}
+    components.push({ type: 'body', parameters: varNames.map(n => ({ type: 'text', text: String(valueMap[n] ?? '-') })) });
 
     const r = await fetch(`https://graph.facebook.com/${ver}/${cfg.phone_number_id}/messages`, {
       method: 'POST',
