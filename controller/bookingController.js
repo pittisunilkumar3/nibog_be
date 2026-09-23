@@ -186,6 +186,46 @@ async function sendBookingWhatsApp(booking, requestData) {
       .flatMap(c => (c.booking_games || []).map(g => g.game_name).filter(Boolean))
       .join(', ');
     const ver = cfg.api_version || 'v21.0';
+
+    // generate the entry ticket PDF and upload it to Meta media (for DOCUMENT header)
+    let headerComponent = null;
+    try {
+      const ticketBookingId = booking.booking_id || booking.id;
+      if (ticketBookingId) {
+        const qrPayload = JSON.stringify({ type: 'event-ticket', ticketId: String(ticketBookingId), booking_id: Number(ticketBookingId) });
+        const qrPngBuffer = await QRCode.toBuffer(qrPayload, { type: 'png', width: 320, margin: 1 });
+        const pdfBuffer = await buildTicketPDF(booking, ticketBookingId, qrPngBuffer);
+        if (pdfBuffer && pdfBuffer.length) {
+          const fd = new FormData();
+          fd.append('messaging_product', 'whatsapp');
+          fd.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), `NIBOG_Ticket_${ticketBookingId}.pdf`);
+          const mr = await fetch(`https://graph.facebook.com/${ver}/${cfg.phone_number_id}/media`, {
+            method: 'POST', headers: { Authorization: `Bearer ${cfg.access_token}` }, body: fd,
+          });
+          const mj = await mr.json().catch(() => ({}));
+          if (mr.ok && mj.id) {
+            headerComponent = { type: 'header', parameters: [{ type: 'document', document: { id: mj.id, filename: `NIBOG_Ticket_${ticketBookingId}.pdf` } }] };
+            console.log(`🎫 Ticket PDF uploaded to WhatsApp media (Booking ${ticketBookingId})`);
+          } else {
+            console.log('⚠️ Ticket media upload failed:', mj && mj.error && mj.error.message);
+          }
+        }
+      }
+    } catch (pdfErr) {
+      console.error('Ticket PDF generation for WhatsApp failed:', pdfErr.message);
+    }
+
+    const components = [];
+    // only include header params when the approved template actually has a DOCUMENT header
+    if (String(tpl.header_format || '').toLowerCase() === 'document' && headerComponent) components.push(headerComponent);
+    components.push({ type: 'body', parameters: [
+      { type: 'text', text: parent.parent_name || 'Parent' },
+      { type: 'text', text: eventName },
+      { type: 'text', text: String(bookingId) },
+      { type: 'text', text: games || '-' },
+      { type: 'text', text: venue },
+    ]});
+
     const r = await fetch(`https://graph.facebook.com/${ver}/${cfg.phone_number_id}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${cfg.access_token}`, 'Content-Type': 'application/json' },
@@ -193,17 +233,7 @@ async function sendBookingWhatsApp(booking, requestData) {
         messaging_product: 'whatsapp',
         to: String(parent.phone).replace(/[^0-9]/g, ''),
         type: 'template',
-        template: {
-          name: 'booking_confirmation',
-          language: { code: tpl.language || 'en' },
-          components: [{ type: 'body', parameters: [
-            { type: 'text', text: parent.parent_name || 'Parent' },
-            { type: 'text', text: eventName },
-            { type: 'text', text: String(bookingId) },
-            { type: 'text', text: games || '-' },
-            { type: 'text', text: venue },
-          ]}],
-        },
+        template: { name: 'booking_confirmation', language: { code: tpl.language || 'en' }, components },
       }),
     });
     const j = await r.json().catch(() => ({}));
