@@ -185,6 +185,27 @@ async function sendBookingWhatsApp(booking, requestData) {
     const games = (booking.children || [])
       .flatMap(c => (c.booking_games || []).map(g => g.game_name).filter(Boolean))
       .join(', ');
+
+    // rich child/event variables (first child; multi-child bookings list all in games)
+    const child = (booking.children && booking.children[0]) || {};
+    const fmtTime12 = (time) => {
+      if (!time) return '';
+      const [h, m] = String(time).split(':');
+      const hour = parseInt(h);
+      return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+    };
+    const dobDate = child.date_of_birth ? new Date(child.date_of_birth) : null;
+    const refDate = booking.event && booking.event.date ? new Date(booking.event.date) : new Date();
+    let childAge = '';
+    if (dobDate && !isNaN(dobDate.getTime())) {
+      const months = Math.max(0, (refDate.getFullYear() - dobDate.getFullYear()) * 12 + (refDate.getMonth() - dobDate.getMonth()) - (refDate.getDate() < dobDate.getDate() ? 1 : 0));
+      childAge = `${months} months`;
+    }
+    const firstSlot = (child.booking_games || []).find(g => g.slot_start_time);
+    const eventTime = firstSlot && firstSlot.slot_end_time
+      ? `${fmtTime12(firstSlot.slot_start_time)} - ${fmtTime12(firstSlot.slot_end_time)}`
+      : firstSlot ? fmtTime12(firstSlot.slot_start_time) : '';
+    const totalAmount = booking.total_amount ? `Rs. ${parseFloat(booking.total_amount).toFixed(2)}` : '';
     const ver = cfg.api_version || 'v21.0';
 
     // generate the entry ticket PDF and upload it to Meta media (for DOCUMENT header)
@@ -221,12 +242,20 @@ async function sendBookingWhatsApp(booking, requestData) {
     // map values by the template's stored variable order (falls back to the default order)
     const valueMap = {
       parent_name: parent.parent_name || 'Parent',
-      child_name: parent.parent_name || 'Parent',
       event_name: eventName,
       booking_id: String(bookingId),
       games_list: games || '-',
       games: games || '-',
       venue: venue,
+      child_name: child.full_name || 'Your child',
+      child_age: childAge || '-',
+      child_dob: dobDate && !isNaN(dobDate.getTime()) ? dobDate.toLocaleDateString('en-IN') : '-',
+      child_gender: child.gender || '-',
+      school_name: child.school_name || '-',
+      event_date: booking.event && booking.event.date ? new Date(booking.event.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+      event_time: eventTime || '-',
+      total_amount: totalAmount || '-',
+      parent_phone: parent.phone || '-',
     };
     let varNames = ['parent_name', 'event_name', 'booking_id', 'games_list', 'venue'];
     try {
