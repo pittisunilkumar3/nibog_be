@@ -58,6 +58,24 @@ const EmailSettingsModel = {
     });
 
     // Email options
+
+    // Deliverability: always include a plain-text part (HTML-only mail is a strong spam signal)
+    if (emailData.html && !emailData.text) {
+      emailData.text = String(emailData.html)
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/[pdivtrh]>|<br[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\n\s*\n\s*\n+/g, '\n\n')
+        .replace(/[ \t]+/g, ' ')
+        .trim();
+    }
+
     const mailOptions = {
       from: `"${settings.sender_name}" <${settings.sender_email}>`,
       to: emailData.to,
