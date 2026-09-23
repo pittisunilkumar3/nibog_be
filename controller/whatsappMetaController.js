@@ -149,3 +149,112 @@ exports.webhook = async (req, res) => {
     res.sendStatus(200);
   } catch (e) { res.sendStatus(200); }
 };
+
+// POST /api/whatsapp-meta/test-booking {booking_id, to?} — full pipeline with step report
+exports.testBookingSend = async (req, res) => {
+  const steps = [];
+  try {
+    const { booking_id, to } = req.body || {};
+    if (!booking_id) return res.status(400).json({ error: 'booking_id is required' });
+    const cfg = await getConfig();
+    if (!cfg || !cfg.is_active || !cfg.access_token || !cfg.phone_number_id) {
+      return res.status(400).json({ error: 'WhatsApp Meta not configured/active', steps });
+    }
+    const [tplRows] = await pool.query("SELECT * FROM whatsapp_templates WHERE template_name='booking_confirmation' LIMIT 1");
+    const tpl = tplRows[0];
+    if (!tpl) return res.status(400).json({ error: 'booking_confirmation template not found', steps });
+    if (tpl.status !== 'APPROVED') {
+      return res.status(400).json({ error: `Template status: ${tpl.status} — Meta must APPROVE it before sending`, steps });
+    }
+    const BookingModel = require('../model/bookingModel');
+    const booking = await BookingModel.getBookingById(Number(booking_id));
+    if (!booking) return res.status(404).json({ error: 'Booking not found', steps });
+    steps.push({ step: 'Load booking', ok: true, detail: `Booking #${booking.booking_id || booking.id}, event: ${booking.event && (booking.event.name || booking.event.title)}` });
+
+    const [pRows] = await pool.query('SELECT parent_name, phone FROM parents WHERE id=? LIMIT 1', [booking.parent_id]);
+    if (!pRows.length) return res.status(404).json({ error: 'Parent not found for this booking', steps });
+    const parent = pRows[0];
+    steps.push({ step: 'Parent', ok: true, detail: `${parent.parent_name} • ${parent.phone}` });
+
+    const bookingId = booking.booking_id || booking.id;
+    const ver = cfg.api_version || 'v21.0';
+
+    // 1) ticket PDF
+    let pdfBuffer = null;
+    try {
+      const QRCode = require('qrcode');
+      const qrPayload = JSON.stringify({ type: 'event-ticket', ticketId: String(bookingId), booking_id: Number(bookingId) });
+      const qrPngBuffer = await QRCode.toBuffer(qrPayload, { type: 'png', width: 320, margin: 1 });
+      const { buildTicketPDF } = require('./bookingController');
+      pdfBuffer = await buildTicketPDF(booking, bookingId, qrPngBuffer);
+      const ok = !!pdfBuffer && pdfBuffer.length > 0;
+      steps.push({ step: 'Generate ticket PDF', ok, detail: ok ? `${Math.round(pdfBuffer.length / 1024)} KB` : 'empty buffer' });
+      if (!ok) pdfBuffer = null;
+    } catch (e) {
+      steps.push({ step: 'Generate ticket PDF', ok: false, detail: e.message });
+    }
+
+    // 2) upload to Meta media
+    let docParams = null;
+    if (pdfBuffer) {
+      try {
+        const fd = new FormData();
+        fd.append('messaging_product', 'whatsapp');
+        fd.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), `NIBOG_Ticket_${bookingId}.pdf`);
+        const mr = await fetch(`https://graph.facebook.com/${ver}/${cfg.phone_number_id}/media`, {
+          method: 'POST', headers: { Authorization: `Bearer ${cfg.access_token}` }, body: fd,
+        });
+        const mj = await mr.json().catch(() => ({}));
+        if (mr.ok && mj.id) {
+          docParams = { id: mj.id, filename: `NIBOG_Ticket_${bookingId}.pdf` };
+          steps.push({ step: 'Upload PDF to Meta media', ok: true, detail: `media id: ${mj.id}` });
+        } else {
+          steps.push({ step: 'Upload PDF to Meta media', ok: false, detail: (mj.error && mj.error.message) || 'upload rejected' });
+        }
+      } catch (e) {
+        steps.push({ step: 'Upload PDF to Meta media', ok: false, detail: e.message });
+      }
+    }
+
+    // 3) send template
+    const valueMap = {
+      parent_name: parent.parent_name || 'Parent',
+      event_name: (booking.event && (booking.event.name || booking.event.title)) || 'NIBOG Event',
+      booking_id: String(bookingId),
+      games_list: (booking.children || []).flatMap(c => (c.booking_games || []).map(g => g.game_name).filter(Boolean)).join(', ') || '-',
+      venue: (booking.event && ((booking.event.venue && booking.event.venue.name) || booking.event.venue_name)) || 'Venue details in ticket',
+    };
+    let varNames = ['parent_name', 'event_name', 'booking_id', 'games_list', 'venue'];
+    try {
+      const stored = JSON.parse(tpl.body_variables || 'null');
+      if (Array.isArray(stored) && stored.length) varNames = stored;
+    } catch (_) {}
+
+    const components = [];
+    const isDoc = String(tpl.header_format || '').toLowerCase() === 'document';
+    if (isDoc) {
+      if (docParams) components.push({ type: 'header', parameters: [{ type: 'document', document: docParams }] });
+      else return res.status(400).json({ error: 'Template has DOCUMENT header but PDF upload failed — cannot send', steps });
+    }
+    components.push({ type: 'body', parameters: varNames.map(n => ({ type: 'text', text: String(valueMap[n] ?? '-') })) });
+
+    const toNumber = (to && String(to).replace(/[^0-9]/g, '')) || String(parent.phone).replace(/[^0-9]/g, '');
+    const r = await fetch(`https://graph.facebook.com/${ver}/${cfg.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfg.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp', to: toNumber, type: 'template',
+        template: { name: 'booking_confirmation', language: { code: tpl.language || 'en' }, components },
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) {
+      steps.push({ step: 'Send WhatsApp', ok: true, detail: `delivered to Meta for ${toNumber} (message id: ${j.messages && j.messages[0] && j.messages[0].id})` });
+      return res.json({ success: true, steps, message: `WhatsApp with ticket PDF sent to ${toNumber} — check the phone!` });
+    }
+    steps.push({ step: 'Send WhatsApp', ok: false, detail: (j.error && j.error.message) || 'send failed' });
+    return res.status(400).json({ error: 'Send failed — see steps', steps });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, steps });
+  }
+};

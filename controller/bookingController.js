@@ -1349,3 +1349,6 @@ exports.checkinTicket = async (req, res) => {
     res.status(500).json({ valid: false, reason: 'error', message: err.message });
   }
 };
+
+// exported for WhatsApp test pipeline
+exports.buildTicketPDF = buildTicketPDF;
