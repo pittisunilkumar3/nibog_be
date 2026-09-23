@@ -154,6 +154,70 @@ exports.createBooking = async (req, res) => {
 };
 
 /**
+ * Send booking confirmation via WhatsApp (Meta Cloud API) — only when connected
+ * Uses the approved 'booking_confirmation' template: {{1}} parent, {{2}} event, {{3}} booking id, {{4}} games, {{5}} venue
+ */
+async function sendBookingWhatsApp(booking, requestData) {
+  try {
+    const [cfgRows] = await promisePool.query('SELECT * FROM whatsapp_meta_config ORDER BY id LIMIT 1');
+    const cfg = cfgRows[0];
+    if (!cfg || !cfg.is_active || !cfg.access_token || !cfg.phone_number_id) {
+      console.log('📱 WhatsApp skipped: Meta not configured/active');
+      return;
+    }
+    const [tplRows] = await promisePool.query("SELECT * FROM whatsapp_templates WHERE template_name='booking_confirmation' LIMIT 1");
+    const tpl = tplRows[0];
+    if (!tpl || tpl.status !== 'APPROVED') {
+      console.log('📱 WhatsApp skipped: booking_confirmation template not approved on Meta yet');
+      return;
+    }
+    const parentId = booking.parent_id || requestData.parent_id;
+    if (!parentId) return;
+    const [pRows] = await promisePool.query('SELECT parent_name, phone FROM parents WHERE id=? LIMIT 1', [parentId]);
+    if (!pRows.length || !pRows[0].phone) {
+      console.log('📱 WhatsApp skipped: parent phone not found');
+      return;
+    }
+    const parent = pRows[0];
+    const bookingId = booking.booking_id || booking.id;
+    const eventName = (booking.event && (booking.event.name || booking.event.title)) || 'NIBOG Event';
+    const venue = (booking.event && ((booking.event.venue && booking.event.venue.name) || booking.event.venue_name)) || 'Venue details in ticket';
+    const games = (booking.children || [])
+      .flatMap(c => (c.booking_games || []).map(g => g.game_name).filter(Boolean))
+      .join(', ');
+    const ver = cfg.api_version || 'v21.0';
+    const r = await fetch(`https://graph.facebook.com/${ver}/${cfg.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfg.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: String(parent.phone).replace(/[^0-9]/g, ''),
+        type: 'template',
+        template: {
+          name: 'booking_confirmation',
+          language: { code: tpl.language || 'en' },
+          components: [{ type: 'body', parameters: [
+            { type: 'text', text: parent.parent_name || 'Parent' },
+            { type: 'text', text: eventName },
+            { type: 'text', text: String(bookingId) },
+            { type: 'text', text: games || '-' },
+            { type: 'text', text: venue },
+          ]}],
+        },
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) {
+      console.log(`✅ WhatsApp booking confirmation sent to ${parent.phone} (Booking ${bookingId})`);
+    } else {
+      console.log(`⚠️ WhatsApp send failed (Booking ${bookingId}):`, j && j.error && j.error.message);
+    }
+  } catch (e) {
+    console.error('sendBookingWhatsApp error:', e.message);
+  }
+}
+
+/**
  * Send booking confirmation emails to parent and admin
  */
 async function sendBookingEmails(booking, requestData) {
@@ -167,6 +231,8 @@ async function sendBookingEmails(booking, requestData) {
       await sendPaymentFailedEmail(booking, requestData);
       return;
     }
+    // fire-and-forget: WhatsApp confirmation only when Meta is connected & template approved
+    sendBookingWhatsApp(booking, requestData).catch(() => {});
     // ...existing code...
     // const adminEmail = 'Nibog100@gmail.com';
     const adminEmail = process.env.ADMIN_EMAIL || 'Nibog100@gmail.com';
