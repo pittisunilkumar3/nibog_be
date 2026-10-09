@@ -138,7 +138,11 @@ exports.login = async (req, res) => {
         id: employee.id,
         email: employee.email,
         employee_id: employee.employee_id,
-        is_superadmin: employee.is_superadmin
+        is_superadmin: employee.is_superadmin,
+        // Session epoch: bumped whenever the superadmin password changes.
+        // Old tokens carry a stale epoch and fail /validate-superadmin,
+        // which force-logs-out previous superadmin sessions only.
+        session_epoch: employee.session_epoch || 0
       },
       JWT_SECRET
     );
@@ -216,5 +220,66 @@ exports.listEmployees = async (req, res) => {
       message: 'Error fetching employees',
       error: error.message
     });
+  }
+};
+
+/**
+ * Validate a superadmin session server-side.
+ * Used by the Next.js middleware to force-logout stale superadmin sessions
+ * (e.g. after a password change). Other employees are unaffected.
+ *
+ * Input: header 'x-superadmin-token' = raw value of the 'superadmin-token' cookie.
+ * Cookie can be either:
+ *   - URL-encoded JSON: { id, email, token: <JWT>, ... }  (proxy login format)
+ *   - raw JWT                                            (legacy format)
+ */
+exports.validateSuperadmin = async (req, res) => {
+  try {
+    const raw = req.headers['x-superadmin-token'];
+    if (!raw) {
+      return res.status(401).json({ success: false, message: 'No session token' });
+    }
+
+    // Extract the JWT from the raw cookie value
+    let jwtToken = raw;
+    try {
+      const parsed = JSON.parse(decodeURIComponent(raw));
+      if (parsed && typeof parsed === 'object' && parsed.token) {
+        jwtToken = parsed.token;
+      }
+    } catch (e) { /* not JSON - treat whole value as JWT */ }
+
+    // Verify signature
+    let decoded;
+    try {
+      decoded = jwt.verify(jwtToken, JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+
+    if (decoded.is_superadmin !== 1) {
+      return res.status(403).json({ success: false, message: 'Not a superadmin' });
+    }
+
+    // Check current DB state: account must still be superadmin and epoch must match
+    const employees = await EmployeeModel.findByEmail(decoded.email);
+    if (employees.length === 0) {
+      return res.status(401).json({ success: false, message: 'Account not found' });
+    }
+    const employee = employees[0];
+
+    if (employee.is_superadmin !== 1) {
+      return res.status(403).json({ success: false, message: 'Superadmin access revoked' });
+    }
+
+    const currentEpoch = employee.session_epoch || 0;
+    if ((decoded.session_epoch || 0) !== currentEpoch) {
+      return res.status(401).json({ success: false, message: 'Session expired - please login again' });
+    }
+
+    return res.status(200).json({ success: true, message: 'Session valid' });
+  } catch (error) {
+    console.error('validateSuperadmin error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
