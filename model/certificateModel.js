@@ -109,7 +109,12 @@ const CertificateModel = {
          e.event_date AS event_date,
          v.venue_name AS venue_name,
          g.game_name AS game_name,
-         bg.game_id AS game_id
+         bg.game_id AS game_id,
+         b.status AS booking_status,
+         b.total_amount AS amount,
+         b.payment_method AS payment_method,
+         b.payment_status AS payment_status,
+         b.created_at AS booking_date
        FROM bookings b
        JOIN parents p ON b.parent_id = p.id
        JOIN booking_games bg ON bg.booking_id = b.id
