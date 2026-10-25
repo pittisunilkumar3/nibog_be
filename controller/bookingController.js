@@ -288,7 +288,7 @@ async function sendBookingWhatsApp(booking, requestData) {
 /**
  * Send booking confirmation emails to parent and admin
  */
-async function sendBookingEmails(booking, requestData) {
+async function sendBookingEmails(booking, requestData, options = {}) {
   try {
     const parentEmail = requestData.email;
 
@@ -300,7 +300,7 @@ async function sendBookingEmails(booking, requestData) {
       return;
     }
     // fire-and-forget: WhatsApp confirmation only when Meta is connected & template approved
-    sendBookingWhatsApp(booking, requestData).catch(() => {});
+    if (!options.customerOnly) sendBookingWhatsApp(booking, requestData).catch(() => {});
     // ...existing code...
     // const adminEmail = 'Nibog100@gmail.com';
     const adminEmail = process.env.ADMIN_EMAIL || 'Nibog100@gmail.com';
@@ -370,8 +370,11 @@ async function sendBookingEmails(booking, requestData) {
         }
       }
     } catch (ticketErr) {
+      if (options.customerOnly) throw ticketErr;
       console.error('Failed to generate ticket PDF/QR (email continues without attachment):', ticketErr.message);
     }
+
+    if (options.customerOnly && ticketAttachments.length !== 2) throw new Error('Ticket generation failed');
 
     // Email to Parent - Booking Confirmation
     const parentEmailContent = {
@@ -711,6 +714,8 @@ Booking ID: ${booking.id}
       `
     };
 
+    if (options.customerOnly) return await EmailSettingsModel.sendEmail(parentEmailContent);
+
     // Send both emails
     await Promise.all([
       EmailSettingsModel.sendEmail(parentEmailContent),
@@ -722,6 +727,7 @@ Booking ID: ${booking.id}
     console.log(`  - Admin: ${adminEmail}`);
     
   } catch (error) {
+    if (options.customerOnly) throw error;
     console.error('Failed to send booking emails:', error.message);
     console.error('Error stack:', error.stack);
     // Don't throw - we don't want to break the booking process if email fails
@@ -1352,3 +1358,39 @@ exports.checkinTicket = async (req, res) => {
 
 // exported for WhatsApp test pipeline
 exports.buildTicketPDF = buildTicketPDF;
+
+// Admin resend uses persisted booking details and sends only the customer email.
+const resendInFlight = new Set();
+exports.resendConfirmationEmail = async (req, res) => {
+  const id = String(req.params.id);
+  if (!/^[1-9][0-9]*$/.test(id)) return res.status(400).json({ error: 'Invalid booking ID' });
+  if (resendInFlight.has(id)) return res.status(409).json({ error: 'This booking email is already being sent. Please wait.' });
+  resendInFlight.add(id);
+  try {
+    const booking = await BookingModel.getBookingById(id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (['cancelled', 'canceled', 'refunded'].includes(String(booking.status).toLowerCase())) {
+      return res.status(409).json({ error: 'Cannot send a confirmation for a cancelled or refunded booking.' });
+    }
+    const paid = normalizePaymentStatus(booking.payment_status) === 'Paid' ||
+      (!booking.payment_status && (booking.payments || []).some(p => normalizePaymentStatus(p.payment_status) === 'Paid'));
+    if (!paid) return res.status(409).json({ error: 'Payment must be completed before sending the ticket.' });
+    const email = String(booking.parent?.email || '').trim();
+    if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email)) {
+      return res.status(422).json({ error: 'This booking does not have a valid customer email address.' });
+    }
+    const result = await sendBookingEmails({ ...booking, payment_status: 'Paid' }, {
+      email, parent_name: booking.parent.name, phone: booking.parent.phone, payment_status: 'Paid'
+    }, { customerOnly: true });
+    if (!result?.accepted?.some(address => String(address).toLowerCase() === email.toLowerCase()) || result.rejected?.length) {
+      throw new Error('Mail server did not accept the recipient');
+    }
+    console.log(JSON.stringify({ action: 'booking-confirmation-resend', bookingId: id, messageId: result.messageId, at: new Date().toISOString() }));
+    return res.json({ success: true, email, message: 'Confirmation email sent with ticket and QR code.' });
+  } catch (error) {
+    console.error('Booking confirmation resend failed', id, error.message);
+    return res.status(502).json({ error: 'Could not send the confirmation email. Please check mail settings or try again later.' });
+  } finally {
+    resendInFlight.delete(id);
+  }
+};

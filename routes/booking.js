@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bookingController = require('../controller/bookingController');
 
+router.post('/:id/resend-email', require('../controller/requireSuperadminSession'), bookingController.resendConfirmationEmail);
+
 // GET /api/bookings/check - Check booking by reference
 router.get('/check', bookingController.checkBookingByReference);
 
