@@ -9,6 +9,7 @@ function normalizePaymentStatus(status) {
 
 const BookingModel = require('../model/bookingModel');
 const { verifyPhonePePayment } = require('./phonePeVerification');
+const { normalizeBookingPaymentInput } = require('./bookingPaymentInput');
 const EmailSettingsModel = require('../model/emailSettingsModel');
 const { promisePool } = require('../config/config');
 const QRCode = require('qrcode');
@@ -51,6 +52,7 @@ exports.updateBooking = async (req, res) => {
  */
 exports.createBooking = async (req, res) => {
   try {
+    const paymentInput = req.paymentInput || normalizeBookingPaymentInput(req.body);
     // Handle nested structure from webhook (flatten parent, child, booking objects)
     let bookingData = { ...req.body };
 
@@ -62,11 +64,11 @@ exports.createBooking = async (req, res) => {
         email: req.body.parent.email,
         phone: req.body.parent.additional_phone || req.body.parent.phone,
         event_id: req.body.booking.event_id,
-        booking_ref: req.body.booking_ref || req.body.booking.booking_ref,
-        status: normalizePaymentStatus(req.body.booking.payment_status) === 'Paid' ? 'Confirmed' : 'Pending',
+        booking_ref: paymentInput.bookingRef,
+        status: 'Pending',
         total_amount: req.body.total_amount || req.body.booking.total_amount || 0,
-        payment_method: req.body.booking.payment_method,
-        payment_status: normalizePaymentStatus(req.body.booking.payment_status),
+        payment_method: paymentInput.paymentMethod,
+        payment_status: paymentInput.paymentStatus,
         children: [{
           full_name: req.body.child.full_name,
           date_of_birth: req.body.child.date_of_birth,
@@ -79,8 +81,8 @@ exports.createBooking = async (req, res) => {
     // Handle payment object structure from admin manual bookings
     if (req.body.payment && typeof req.body.payment === "object") {
       bookingData.payment = req.body.payment;
-      bookingData.payment_status = normalizePaymentStatus(req.body.payment.payment_status);
-      bookingData.payment_method = req.body.payment.payment_method;
+      bookingData.payment_status = paymentInput.paymentStatus;
+      bookingData.payment_method = paymentInput.paymentMethod;
       bookingData.transaction_id = req.body.payment.transaction_id;
       bookingData.total_amount = req.body.payment.amount || bookingData.total_amount;
       // If payment is already paid (e.g., Cash payment), confirm the booking
@@ -88,8 +90,12 @@ exports.createBooking = async (req, res) => {
         bookingData.status = "Confirmed";
       }
     }
-    const bookingRef = bookingData.booking_ref;
-    const isPhonePe = String(bookingData.payment_method || '').toLowerCase() === 'phonepe';
+    bookingData.booking_ref = paymentInput.bookingRef;
+    bookingData.payment_status = paymentInput.paymentStatus;
+    bookingData.payment_method = paymentInput.paymentMethod;
+
+    const bookingRef = paymentInput.bookingRef;
+    const isPhonePe = paymentInput.isPhonePe;
 
     if (bookingData.payment_status === 'Paid' && isPhonePe) {
       if (!bookingRef) {
@@ -104,14 +110,14 @@ exports.createBooking = async (req, res) => {
         amountPaise: verified.amountPaise,
         gatewayResponse: verified.gatewayResponse
       });
-      const bookingDetails = await BookingModel.getBookingById(result.booking_id);
+      const bookingDetails = result.bookingDetails;
 
       if (result.transitioned && bookingDetails) {
         const emailRequestData = {
-          ...bookingData,
-          parent_name: bookingData.parent_name || bookingDetails.parent?.name,
-          email: bookingData.email || bookingDetails.parent?.email,
-          phone: bookingData.phone || bookingDetails.parent?.phone
+          parent_name: bookingDetails.parent?.name,
+          email: bookingDetails.parent?.email,
+          phone: bookingDetails.parent?.phone,
+          payment_status: bookingDetails.payment_status
         };
         sendBookingEmails(bookingDetails, emailRequestData).catch(err => {
           console.error('Failed to send booking emails:', err.message);
@@ -122,10 +128,23 @@ exports.createBooking = async (req, res) => {
         message: result.transitioned ? 'Booking confirmed successfully' : 'Booking already confirmed',
         booking_id: result.booking_id,
         booking_ref: result.booking_ref,
-        payment_id: result.payment_id || null,
+        payment_id: result.payment_id,
         total_amount: result.total_amount,
-        already_completed: !result.transitioned
+        status: 'Confirmed',
+        payment_status: 'Paid',
+        created: false,
+        confirmationTransition: result.transitioned
       });
+    }
+
+    if (isPhonePe) {
+      const referenceMatch = /^NIBOG_(\d+)_(\d+)$/.exec(bookingRef || '');
+      if (!referenceMatch || String(bookingRef).length > 38) {
+        return res.status(400).json({ error: 'PhonePe booking_ref must be NIBOG_<userId>_<timestamp>', code: 'INVALID_BOOKING_REFERENCE' });
+      }
+      if (Number(referenceMatch[1]) !== Number(bookingData.user_id)) {
+        return res.status(409).json({ error: 'PhonePe booking reference does not match the customer', code: 'BOOKING_USER_MISMATCH' });
+      }
     }
 
     // Validate required fields
@@ -167,12 +186,13 @@ exports.createBooking = async (req, res) => {
       }
     }
 
-    if (bookingData.payment_status === 'Paid') {
+    if (paymentInput.isPaid) {
       bookingData.status = 'Confirmed';
     } else {
       bookingData.payment_status = 'Pending';
       bookingData.status = 'Pending';
-      if (bookingData.payment) bookingData.payment.payment_status = 'Pending';
+      if (isPhonePe) bookingData.payment = null;
+      else if (bookingData.payment) bookingData.payment.payment_status = 'Pending';
     }
 
     const result = await BookingModel.createBooking(bookingData);
@@ -195,11 +215,20 @@ exports.createBooking = async (req, res) => {
       message: 'Booking created successfully',
       booking_id: result.booking_id,
       booking_ref: bookingDetails?.booking_ref || result.booking_ref,
-      payment_id: result.payment_id || null,
-      total_amount: Number(bookingDetails?.total_amount ?? bookingData.total_amount)
+      payment_id: isPhonePe ? null : (result.payment_id || null),
+      total_amount: Number(bookingDetails?.total_amount ?? bookingData.total_amount),
+      status: bookingData.status,
+      payment_status: bookingData.payment_status,
+      created: true,
+      confirmationTransition: false
     });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: err.message, code: err.code || 'BOOKING_ERROR' });
+    const statusCode = err.statusCode || 500;
+    if (statusCode >= 500) console.error('Booking processing failed:', err.message);
+    res.status(statusCode).json({
+      error: err.statusCode ? err.message : 'Booking could not be processed',
+      code: err.statusCode && err.code ? err.code : 'BOOKING_ERROR'
+    });
   }
 };
 

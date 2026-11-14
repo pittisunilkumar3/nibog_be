@@ -22,12 +22,12 @@ function getPhonePeConfig(env) {
     merchantId,
     saltKey,
     saltIndex,
-    baseUrl: isTest ? 'https://api-preprod.phonepe.com/apis/pg-sandbox' : 'https://api.phonepe.com/apis/pg'
+    baseUrl: isTest ? 'https://api-preprod.phonepe.com/apis/pg-sandbox' : 'https://api.phonepe.com/apis/hermes'
   };
 }
 
 async function verifyPhonePePayment(merchantTransactionId, options = {}) {
-  if (typeof merchantTransactionId !== 'string' || !/^[A-Za-z0-9_-]{1,38}$/.test(merchantTransactionId)) {
+  if (typeof merchantTransactionId !== 'string' || !/^NIBOG_\d+_\d+$/.test(merchantTransactionId) || merchantTransactionId.length > 38) {
     throw verificationError('A valid booking reference is required', 400, 'INVALID_BOOKING_REFERENCE');
   }
 
@@ -72,7 +72,7 @@ async function verifyPhonePePayment(merchantTransactionId, options = {}) {
   if (data.merchantTransactionId !== merchantTransactionId) {
     throw verificationError('PhonePe merchant transaction does not match the booking', 409, 'BOOKING_REFERENCE_MISMATCH');
   }
-  if (data.merchantId && data.merchantId !== config.merchantId) {
+  if (data.merchantId !== config.merchantId) {
     throw verificationError('PhonePe merchant does not match the backend configuration', 409, 'MERCHANT_MISMATCH');
   }
   if (!Number.isInteger(data.amount) || data.amount <= 0) {

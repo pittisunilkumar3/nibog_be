@@ -705,9 +705,13 @@ Create a new booking with parent, children, and multiple games/slots per child.
 {
   "message": "Booking created successfully",
   "booking_id": 123,
-  "booking_ref": "NIB-20261114-1001",
+  "booking_ref": "NIBOG_7_1760000000000",
   "payment_id": 456,
-  "total_amount": 998.00
+  "total_amount": 998.00,
+  "status": "Confirmed",
+  "payment_status": "Paid",
+  "created": true,
+  "confirmationTransition": false
 }
 ```
 
@@ -733,18 +737,18 @@ Create a new booking with parent, children, and multiple games/slots per child.
 3. All records are properly linked with correct foreign keys
 
 ### PhonePe registration and completion
-1. Create the booking with `payment_method: "PhonePe"` and `payment_status: "Pending"`. Pending creation returns `booking_id`, `booking_ref`, `total_amount`, and `payment_id`; it does not send a confirmation email.
+1. Create the booking with `booking_ref: "NIBOG_<userId>_<timestamp>"`, `payment_method: "PhonePe"`, and `payment_status: "Pending"`. The embedded user ID must match `user_id`. Pending creation returns `booking_id`, `booking_ref`, `total_amount`, `payment_id: null`, `created: true`, and `confirmationTransition: false`; it does not create a payment or send a confirmation email.
 2. Use `booking_ref` as PhonePe's `merchantTransactionId` and the returned `total_amount` as the payment amount.
 3. Complete the same booking by posting only the reference and verified payment fields:
 
 ```json
 {
-  "booking_ref": "NIB-20261114-1001",
+  "booking_ref": "NIBOG_7_1760000000000",
   "payment_status": "Paid",
   "payment_method": "PhonePe",
   "payment": {
     "transaction_id": "PHONEPE_GATEWAY_TRANSACTION_ID",
-    "phonepe_transaction_id": "NIB-20261114-1001",
+    "phonepe_transaction_id": "NIBOG_7_1760000000000",
     "amount": 998.00,
     "payment_method": "PhonePe",
     "payment_status": "Paid"
@@ -752,7 +756,7 @@ Create a new booking with parent, children, and multiple games/slots per child.
 }
 ```
 
-The backend independently calls PhonePe's status API. It confirms the booking only for a completed payment whose merchant reference and paise amount match the persisted booking. A successful transition returns HTTP 200 with the original numeric `booking_id`, `booking_ref`, `payment_id`, and `total_amount`. Retries return `already_completed: true` without creating another payment or sending another confirmation. Non-PhonePe paid creation requires the existing `x-superadmin-token` session.
+The backend independently calls PhonePe's status API. It confirms the booking only for a completed payment whose merchant identity, merchant reference, embedded user ID, gateway transaction ID, and paise amount match the configured merchant and persisted booking. A successful transition returns HTTP 200 with the original numeric `booking_id`, `booking_ref`, `payment_id`, `total_amount`, `created: false`, `confirmationTransition: true`, `status: "Confirmed"`, and `payment_status: "Paid"`. Retries return the same IDs with `confirmationTransition: false` without creating another payment or sending another confirmation. Duplicate booking references and conflicting payment fields fail closed. Non-PhonePe paid creation and all booking/payment mutations require the existing `x-superadmin-token` session.
 
 ### Example: Multiple Games for One Child
 ```json

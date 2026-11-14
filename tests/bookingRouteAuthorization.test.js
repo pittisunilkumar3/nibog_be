@@ -5,7 +5,7 @@ const controllerPath = require.resolve('../controller/bookingController');
 const employeeModelPath = require.resolve('../model/employeeModel');
 const routesPath = require.resolve('../routes/booking');
 
-function loadCreateRoute() {
+function loadBookingRouter() {
   const previousController = require.cache[controllerPath];
   const previousEmployeeModel = require.cache[employeeModelPath];
   const controller = new Proxy({
@@ -22,7 +22,19 @@ function loadCreateRoute() {
   else delete require.cache[controllerPath];
   if (previousEmployeeModel) require.cache[employeeModelPath] = previousEmployeeModel;
   else delete require.cache[employeeModelPath];
-  return router.stack.find(layer => layer.route?.path === '/' && layer.route.methods.post).route.stack;
+  return router;
+}
+
+function loadRoute(path, method) {
+  return loadBookingRouter().stack.find(layer => layer.route?.path === path && layer.route.methods[method]).route.stack;
+}
+
+function loadCreateRoute() {
+  return loadRoute('/', 'post');
+}
+
+function loadPatchRoute() {
+  return loadRoute('/:id', 'patch');
 }
 
 function reqRes(body) {
@@ -61,11 +73,38 @@ test('allows public pending PhonePe registration to reach the booking controller
 
 test('lets PhonePe paid completion reach direct gateway verification without manual auth', async () => {
   const [guard] = loadCreateRoute();
-  const { req, res } = reqRes({ payment_status: 'Paid', payment_method: 'PhonePe', booking_ref: 'NIB-20261114-1001' });
+  const { req, res } = reqRes({ payment_status: 'Paid', payment_method: 'PhonePe', booking_ref: 'NIBOG_7_1760000000000' });
   let nextCalled = false;
 
   await guard.handle(req, res, () => { nextCalled = true; });
 
   assert.equal(nextCalled, true);
   assert.equal(res.statusCode, 200);
+});
+
+test('rejects conflicting payment payload shapes before authorization or writes', async () => {
+  const [guard] = loadCreateRoute();
+  const { req, res } = reqRes({
+    payment_status: 'Paid',
+    payment_method: 'Cash',
+    booking: { payment_status: 'Paid', payment_method: 'PhonePe' }
+  });
+  let nextCalled = false;
+
+  await guard.handle(req, res, () => { nextCalled = true; });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.code, 'CONFLICTING_PAYMENT_INPUT');
+});
+
+test('rejects unauthenticated booking edits before the controller', async () => {
+  const [guard] = loadPatchRoute();
+  const { req, res } = reqRes({ status: 'Confirmed', payment_status: 'Paid' });
+  let nextCalled = false;
+
+  await guard.handle(req, res, () => { nextCalled = true; });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 401);
 });

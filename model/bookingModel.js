@@ -25,6 +25,16 @@ const BookingModel = {
 
       // 2. Generate booking_ref if not provided
       const bookingRef = data.booking_ref || generateBookingRef();
+      const [existingReferences] = await conn.query(
+        'SELECT id FROM bookings WHERE booking_ref = ? LIMIT 2',
+        [bookingRef]
+      );
+      if (existingReferences.length) {
+        const error = new Error('Booking reference already exists');
+        error.statusCode = 409;
+        error.code = 'DUPLICATE_BOOKING_REFERENCE';
+        throw error;
+      }
 
       // 3. Create booking record
       const [bookingResult] = await conn.query(
@@ -103,11 +113,28 @@ const BookingModel = {
     try {
       await conn.beginTransaction();
 
-      const [bookingRows] = await conn.query(
-        'SELECT id, booking_ref, status, total_amount, payment_status FROM bookings WHERE booking_ref = ? FOR UPDATE',
+      const [referenceRows] = await conn.query(
+        'SELECT id FROM bookings WHERE booking_ref = ? LIMIT 2',
         [data.booking_ref]
       );
-      if (!bookingRows.length) {
+      if (!referenceRows.length) {
+        const error = new Error('Booking not found for PhonePe verification');
+        error.statusCode = 404;
+        error.code = 'BOOKING_NOT_FOUND';
+        throw error;
+      }
+      if (referenceRows.length !== 1) {
+        const error = new Error('Booking reference matches multiple bookings');
+        error.statusCode = 409;
+        error.code = 'DUPLICATE_BOOKING_REFERENCE';
+        throw error;
+      }
+
+      const [bookingRows] = await conn.query(
+        'SELECT b.id, b.booking_ref, b.status, b.total_amount, b.payment_status, p.user_id FROM bookings b INNER JOIN parents p ON b.parent_id = p.id WHERE b.id = ? FOR UPDATE',
+        [referenceRows[0].id]
+      );
+      if (bookingRows.length !== 1) {
         const error = new Error('Booking not found for PhonePe verification');
         error.statusCode = 404;
         error.code = 'BOOKING_NOT_FOUND';
@@ -115,6 +142,14 @@ const BookingModel = {
       }
 
       const booking = bookingRows[0];
+      const referenceMatch = /^NIBOG_(\d+)_(\d+)$/.exec(booking.booking_ref);
+      if (!referenceMatch || data.merchantTransactionId !== booking.booking_ref || Number(referenceMatch[1]) !== Number(booking.user_id)) {
+        const error = new Error('Booking reference does not match the persisted customer');
+        error.statusCode = 409;
+        error.code = 'BOOKING_USER_MISMATCH';
+        throw error;
+      }
+
       const persistedAmountPaise = Math.round(Number(booking.total_amount) * 100);
       if (!Number.isFinite(persistedAmountPaise) || persistedAmountPaise !== data.amountPaise) {
         const error = new Error('Verified PhonePe amount does not match the booking total');
@@ -150,7 +185,8 @@ const BookingModel = {
           booking_ref: booking.booking_ref,
           payment_id: existingPayment ? existingPayment.id : null,
           total_amount: Number(booking.total_amount),
-          transitioned: false
+          transitioned: false,
+          bookingDetails: null
         };
       }
 
@@ -174,13 +210,15 @@ const BookingModel = {
         paymentId = paymentResult.insertId;
       }
 
+      const bookingDetails = await BookingModel.getBookingById(booking.id, conn);
       await conn.commit();
       return {
         booking_id: booking.id,
         booking_ref: booking.booking_ref,
         payment_id: paymentId,
         total_amount: Number(booking.total_amount),
-        transitioned: true
+        transitioned: true,
+        bookingDetails
       };
     } catch (err) {
       await conn.rollback();
@@ -747,10 +785,10 @@ const BookingModel = {
    * Get single booking details by booking ID
    * Returns complete booking info with parent, event, children, games, and payments
    */
-  async getBookingById(bookingId) {
+  async getBookingById(bookingId, connection = promisePool) {
     try {
       // Get booking details
-      const [bookingRows] = await promisePool.query(`
+      const [bookingRows] = await connection.query(`
         SELECT 
           b.id as booking_id,
           b.booking_ref,
@@ -792,7 +830,7 @@ const BookingModel = {
       const booking = bookingRows[0];
 
       // Get children for this booking
-      const [childrenRows] = await promisePool.query(`
+      const [childrenRows] = await connection.query(`
         SELECT DISTINCT
           c.id as child_id,
           c.full_name,
@@ -809,7 +847,7 @@ const BookingModel = {
       // Get booking games for each child
       const children = [];
       for (const child of childrenRows) {
-        const [gamesRows] = await promisePool.query(`
+        const [gamesRows] = await connection.query(`
           SELECT 
             bg.id as booking_game_id,
             bg.game_price,
@@ -842,7 +880,7 @@ const BookingModel = {
       }
 
       // Get payment details
-      const [paymentRows] = await promisePool.query(`
+      const [paymentRows] = await connection.query(`
         SELECT 
           id as payment_id,
           transaction_id,

@@ -45,7 +45,7 @@ function responseRecorder() {
 function bookingDetails(overrides = {}) {
   return {
     booking_id: 42,
-    booking_ref: 'NIB-20261114-1001',
+    booking_ref: 'NIBOG_7_1760000000000',
     total_amount: 100,
     payment_status: 'Paid',
     parent: { name: 'Test Parent', email: 'parent@example.com', phone: '9876543210' },
@@ -63,7 +63,7 @@ test('creates an initial PhonePe booking as Pending without confirmation email',
     bookingModel: {
       createBooking: async data => {
         createdData = data;
-        return { booking_id: 42, booking_ref: 'NIB-20261114-1001', payment_id: null };
+        return { booking_id: 42, booking_ref: 'NIBOG_7_1760000000000', payment_id: null };
       },
       getBookingById: async () => bookingDetails({ payment_status: 'Pending', status: 'Pending' })
     },
@@ -75,8 +75,9 @@ test('creates an initial PhonePe booking as Pending without confirmation email',
       user_id: 7,
       parent: { parent_name: 'Test Parent', email: 'parent@example.com', additional_phone: '9876543210' },
       child: { full_name: 'Child', date_of_birth: '2020-01-01', gender: 'Female', school_name: 'School' },
-      booking: { event_id: 3, total_amount: 100, payment_method: 'PhonePe', payment_status: 'Pending' },
-      booking_games: [{ game_id: 4, slot_id: 5, game_price: 100 }]
+      booking: { event_id: 3, booking_ref: 'NIBOG_7_1760000000000', total_amount: 100, payment_method: 'PhonePe', payment_status: 'Pending' },
+      booking_games: [{ game_id: 4, slot_id: 5, game_price: 100 }],
+      payment: { transaction_id: 'UNTRUSTED_TXN', amount: 100, payment_method: 'PhonePe', payment_status: 'Pending' }
     }
   };
   const res = responseRecorder();
@@ -85,10 +86,14 @@ test('creates an initial PhonePe booking as Pending without confirmation email',
 
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.booking_id, 42);
-  assert.equal(res.body.booking_ref, 'NIB-20261114-1001');
+  assert.equal(res.body.booking_ref, 'NIBOG_7_1760000000000');
   assert.equal(res.body.total_amount, 100);
+  assert.equal(res.body.payment_id, null);
+  assert.equal(res.body.created, true);
+  assert.equal(res.body.confirmationTransition, false);
   assert.equal(createdData.status, 'Pending');
   assert.equal(createdData.payment_status, 'Pending');
+  assert.equal(createdData.payment, null);
   assert.equal(emailCount, 0);
 });
 
@@ -96,6 +101,7 @@ test('verifies before transitioning and sends one confirmation round, none on re
   let verificationCount = 0;
   let completionCount = 0;
   let emailCount = 0;
+  const recipients = [];
   let transitioned = true;
   let notifyEmails;
   const emailsSent = new Promise(resolve => { notifyEmails = resolve; });
@@ -103,24 +109,26 @@ test('verifies before transitioning and sends one confirmation round, none on re
     bookingModel: {
       completePhonePeBooking: async data => {
         completionCount += 1;
-        assert.equal(data.booking_ref, 'NIB-20261114-1001');
+        assert.equal(data.booking_ref, 'NIBOG_7_1760000000000');
         assert.equal(data.amountPaise, 10000);
-        return { booking_id: 42, booking_ref: data.booking_ref, payment_id: 901, total_amount: 100, transitioned };
-      },
-      getBookingById: async () => bookingDetails()
+        return { booking_id: 42, booking_ref: data.booking_ref, payment_id: 901, total_amount: 100, transitioned, bookingDetails: transitioned ? bookingDetails() : null };
+      }
     },
     verifyPhonePePayment: async reference => {
       verificationCount += 1;
       return { merchantTransactionId: reference, transactionId: 'GATEWAY_TXN_1', amountPaise: 10000, gatewayResponse: { success: true } };
     },
-    sendEmail: async () => {
+    sendEmail: async email => {
+      recipients.push(email.to);
       emailCount += 1;
       if (emailCount === 2) notifyEmails();
     }
   });
   const req = {
     body: {
-      booking_ref: 'NIB-20261114-1001',
+      booking_ref: 'NIBOG_7_1760000000000',
+      email: 'attacker@example.com',
+      parent_name: 'Attacker',
       payment_status: 'Paid',
       payment_method: 'PhonePe',
       payment: { transaction_id: 'GATEWAY_TXN_1', amount: 100, payment_method: 'PhonePe', payment_status: 'Paid' }
@@ -134,16 +142,21 @@ test('verifies before transitioning and sends one confirmation round, none on re
   assert.equal(firstResponse.statusCode, 200);
   assert.equal(firstResponse.body.booking_id, 42);
   assert.equal(firstResponse.body.payment_id, 901);
-  assert.equal(firstResponse.body.already_completed, false);
+  assert.equal(firstResponse.body.created, false);
+  assert.equal(firstResponse.body.confirmationTransition, true);
+  assert.equal(firstResponse.body.payment_status, 'Paid');
   assert.equal(verificationCount, 1);
   assert.equal(completionCount, 1);
   assert.equal(emailCount, 2);
+  assert.equal(recipients[0], 'parent@example.com');
+  assert.equal(recipients.includes('attacker@example.com'), false);
 
   transitioned = false;
   const retryResponse = responseRecorder();
   await controller.createBooking(req, retryResponse);
 
-  assert.equal(retryResponse.body.already_completed, true);
+  assert.equal(retryResponse.body.created, false);
+  assert.equal(retryResponse.body.confirmationTransition, false);
   assert.equal(retryResponse.body.booking_id, 42);
   assert.equal(retryResponse.body.payment_id, 901);
   assert.equal(verificationCount, 2);
@@ -168,7 +181,7 @@ test('does not write or send confirmation when backend verification rejects paid
   });
   const res = responseRecorder();
 
-  await controller.createBooking({ body: { booking_ref: 'NIB-20261114-1001', payment_status: 'Paid', payment_method: 'PhonePe' } }, res);
+  await controller.createBooking({ body: { booking_ref: 'NIBOG_7_1760000000000', payment_status: 'Paid', payment_method: 'PhonePe' } }, res);
 
   assert.equal(res.statusCode, 409);
   assert.equal(res.body.code, 'PAYMENT_NOT_COMPLETED');

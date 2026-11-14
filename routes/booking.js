@@ -2,15 +2,17 @@ const express = require('express');
 const router = express.Router();
 const bookingController = require('../controller/bookingController');
 const requireSuperadminSession = require('../controller/requireSuperadminSession');
+const { normalizeBookingPaymentInput } = require('../controller/bookingPaymentInput');
 
 function requireSuperadminForManualPaid(req, res, next) {
-  const paymentStatus = req.body?.payment?.payment_status || req.body?.booking?.payment_status || req.body?.payment_status;
-  const paymentMethod = req.body?.payment?.payment_method || req.body?.booking?.payment_method || req.body?.payment_method;
-  const isPaid = ['paid', 'success', 'successful', 'completed', 'confirmed'].includes(String(paymentStatus || '').toLowerCase());
-  const isPhonePe = String(paymentMethod || '').toLowerCase() === 'phonepe';
-
-  if (isPaid && !isPhonePe) return requireSuperadminSession(req, res, next);
-  return next();
+  try {
+    const paymentInput = normalizeBookingPaymentInput(req.body);
+    req.paymentInput = paymentInput;
+    if (paymentInput.isPaid && !paymentInput.isPhonePe) return requireSuperadminSession(req, res, next);
+    return next();
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ error: error.message, code: error.code || 'INVALID_PAYMENT_INPUT' });
+  }
 }
 
 router.post('/:id/resend-email', requireSuperadminSession, bookingController.resendConfirmationEmail);
@@ -40,7 +42,7 @@ router.post('/ticket/checkin/:id', bookingController.checkinTicket);
 router.get('/:id', bookingController.getBookingById);
 
 // PATCH /api/bookings/:id - Edit a booking
-router.patch('/:id', bookingController.updateBooking);
+router.patch('/:id', requireSuperadminSession, bookingController.updateBooking);
 
 // DELETE /api/bookings/:id - Delete a booking
 router.delete('/:id', bookingController.deleteBooking);
