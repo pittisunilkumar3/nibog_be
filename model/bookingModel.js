@@ -13,18 +13,21 @@ const { promisePool } = require('../config/config');
 const BookingModel = {
   async createBooking(data) {
     const conn = await promisePool.getConnection();
+    let bookingRefLock = null;
     try {
       await conn.beginTransaction();
 
-      // 1. Create parent record with user_id if provided
-      const [parentResult] = await conn.query(
-        'INSERT INTO parents (parent_name, email, phone, user_id) VALUES (?, ?, ?, ?)',
-        [data.parent_name, data.email, data.phone, data.user_id || null]
-      );
-      const parentId = parentResult.insertId;
-
-      // 2. Generate booking_ref if not provided
       const bookingRef = data.booking_ref || generateBookingRef();
+      const lockName = `nibog:booking:${bookingRef}`;
+      const [lockRows] = await conn.query('SELECT GET_LOCK(?, 5) AS acquired', [lockName]);
+      if (lockRows[0]?.acquired !== 1) {
+        const error = new Error('Could not serialize booking creation for this reference');
+        error.statusCode = 503;
+        error.code = 'BOOKING_REFERENCE_LOCK_TIMEOUT';
+        throw error;
+      }
+      bookingRefLock = lockName;
+
       const [existingReferences] = await conn.query(
         'SELECT id FROM bookings WHERE booking_ref = ? LIMIT 2',
         [bookingRef]
@@ -36,7 +39,14 @@ const BookingModel = {
         throw error;
       }
 
-      // 3. Create booking record
+      // 1. Create parent record with user_id if provided
+      const [parentResult] = await conn.query(
+        'INSERT INTO parents (parent_name, email, phone, user_id) VALUES (?, ?, ?, ?)',
+        [data.parent_name, data.email, data.phone, data.user_id || null]
+      );
+      const parentId = parentResult.insertId;
+
+      // 2. Create booking record
       const [bookingResult] = await conn.query(
         'INSERT INTO bookings (parent_id, event_id, booking_ref, status, total_amount, payment_method, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
@@ -104,7 +114,17 @@ const BookingModel = {
       await conn.rollback();
       throw err;
     } finally {
-      conn.release();
+      let releaseFailed = false;
+      if (bookingRefLock) {
+        try {
+          await conn.query('SELECT RELEASE_LOCK(?) AS released', [bookingRefLock]);
+        } catch (releaseError) {
+          releaseFailed = true;
+          console.error('Failed to release booking reference lock:', releaseError.message);
+        }
+      }
+      if (releaseFailed) conn.destroy();
+      else conn.release();
     }
   },
 

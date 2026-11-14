@@ -44,7 +44,12 @@ function fakeConnection({ booking, references, payments = [] }) {
       if (sql.startsWith('SELECT id, transaction_id, payment_status FROM payments')) {
         return [payments, []];
       }
+      if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }], []];
+      if (sql.startsWith('SELECT RELEASE_LOCK')) return [[{ released: 1 }], []];
       if (sql.startsWith('INSERT INTO parents')) return [{ insertId: 1 }, []];
+      if (sql.startsWith('INSERT INTO bookings')) return [{ insertId: 42 }, []];
+      if (sql.startsWith('INSERT INTO children')) return [{ insertId: 9 }, []];
+      if (sql.startsWith('INSERT INTO booking_games')) return [{ affectedRows: 1 }, []];
       if (sql.startsWith('INSERT INTO payments')) return [{ insertId: 901 }, []];
       if (sql.startsWith('UPDATE bookings') || sql.startsWith('UPDATE payments')) return [{ affectedRows: 1 }, []];
       throw new Error(`Unexpected query: ${sql}`);
@@ -168,6 +173,31 @@ test('rejects duplicate booking references before selecting a booking to confirm
   assert.equal(connection.rollbacks, 1);
 });
 
+test('holds the per-reference advisory lock through commit and releases it afterward', async () => {
+  const connection = fakeConnection({ booking: null, references: [] });
+  const model = loadModel(connection);
+
+  const result = await model.createBooking({
+    booking_ref: verifiedPayment.booking_ref,
+    parent_name: 'Parent',
+    email: 'parent@example.com',
+    phone: '9876543210',
+    user_id: 7,
+    event_id: 3,
+    total_amount: 100,
+    payment_method: 'PhonePe',
+    payment_status: 'Pending',
+    children: [{ full_name: 'Child', date_of_birth: '2020-01-01', gender: 'Female', booking_games: [{ game_id: 4, slot_id: 5, game_price: 100 }] }]
+  });
+
+  assert.deepEqual(result, { booking_id: 42, booking_ref: verifiedPayment.booking_ref, payment_id: null });
+  assert.equal(connection.queries[0].sql.startsWith('SELECT GET_LOCK'), true);
+  assert.equal(connection.queries[connection.queries.length - 1].sql.startsWith('SELECT RELEASE_LOCK'), true);
+  assert.equal(connection.commits, 1);
+  assert.equal(connection.rollbacks, 0);
+  assert.equal(connection.releases, 1);
+});
+
 test('rejects a known duplicate reference during initial booking creation', async () => {
   const connection = fakeConnection({ booking: booking(), references: [{ id: 42 }] });
   const model = loadModel(connection);
@@ -186,6 +216,8 @@ test('rejects a known duplicate reference during initial booking creation', asyn
     error => error.statusCode === 409 && error.code === 'DUPLICATE_BOOKING_REFERENCE'
   );
   assert.equal(connection.queries.filter(query => query.sql.startsWith('INSERT INTO bookings')).length, 0);
+  assert.equal(connection.queries[0].sql.startsWith('SELECT GET_LOCK'), true);
+  assert.equal(connection.queries[connection.queries.length - 1].sql.startsWith('SELECT RELEASE_LOCK'), true);
   assert.equal(connection.rollbacks, 1);
 });
 
