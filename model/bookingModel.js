@@ -98,6 +98,98 @@ const BookingModel = {
     }
   },
 
+  async completePhonePeBooking(data) {
+    const conn = await promisePool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const [bookingRows] = await conn.query(
+        'SELECT id, booking_ref, status, total_amount, payment_status FROM bookings WHERE booking_ref = ? FOR UPDATE',
+        [data.booking_ref]
+      );
+      if (!bookingRows.length) {
+        const error = new Error('Booking not found for PhonePe verification');
+        error.statusCode = 404;
+        error.code = 'BOOKING_NOT_FOUND';
+        throw error;
+      }
+
+      const booking = bookingRows[0];
+      const persistedAmountPaise = Math.round(Number(booking.total_amount) * 100);
+      if (!Number.isFinite(persistedAmountPaise) || persistedAmountPaise !== data.amountPaise) {
+        const error = new Error('Verified PhonePe amount does not match the booking total');
+        error.statusCode = 409;
+        error.code = 'BOOKING_AMOUNT_MISMATCH';
+        throw error;
+      }
+
+      const [paymentRows] = await conn.query(
+        'SELECT id, transaction_id, payment_status FROM payments WHERE booking_id = ? ORDER BY id ASC FOR UPDATE',
+        [booking.id]
+      );
+      if (paymentRows.length > 1) {
+        const error = new Error('Booking has multiple payment records and needs reconciliation');
+        error.statusCode = 409;
+        error.code = 'MULTIPLE_PAYMENTS';
+        throw error;
+      }
+
+      const existingPayment = paymentRows[0] || null;
+      if (existingPayment && existingPayment.transaction_id && existingPayment.transaction_id !== data.transactionId) {
+        const error = new Error('Booking is linked to a different PhonePe transaction');
+        error.statusCode = 409;
+        error.code = 'PAYMENT_TRANSACTION_MISMATCH';
+        throw error;
+      }
+
+      const alreadyCompleted = String(booking.payment_status).toLowerCase() === 'paid';
+      if (alreadyCompleted) {
+        await conn.commit();
+        return {
+          booking_id: booking.id,
+          booking_ref: booking.booking_ref,
+          payment_id: existingPayment ? existingPayment.id : null,
+          total_amount: Number(booking.total_amount),
+          transitioned: false
+        };
+      }
+
+      await conn.query(
+        "UPDATE bookings SET status = 'Confirmed', payment_method = 'PhonePe', payment_status = 'Paid', updated_at = NOW() WHERE id = ?",
+        [booking.id]
+      );
+
+      let paymentId = existingPayment ? existingPayment.id : null;
+      const gatewayResponse = JSON.stringify(data.gatewayResponse || {});
+      if (existingPayment) {
+        await conn.query(
+          "UPDATE payments SET transaction_id = ?, phonepe_transaction_id = ?, amount = ?, payment_method = 'PhonePe', payment_status = 'Paid', payment_date = NOW(), gateway_response = ?, updated_at = NOW() WHERE id = ?",
+          [data.transactionId, data.merchantTransactionId, data.amountPaise / 100, gatewayResponse, existingPayment.id]
+        );
+      } else {
+        const [paymentResult] = await conn.query(
+          "INSERT INTO payments (booking_id, transaction_id, phonepe_transaction_id, amount, payment_method, payment_status, payment_date, gateway_response) VALUES (?, ?, ?, ?, 'PhonePe', 'Paid', NOW(), ?)",
+          [booking.id, data.transactionId, data.merchantTransactionId, data.amountPaise / 100, gatewayResponse]
+        );
+        paymentId = paymentResult.insertId;
+      }
+
+      await conn.commit();
+      return {
+        booking_id: booking.id,
+        booking_ref: booking.booking_ref,
+        payment_id: paymentId,
+        total_amount: Number(booking.total_amount),
+        transitioned: true
+      };
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  },
+
   /**
    * Update an existing booking and its related data
    * @param {number} bookingId - Booking ID to update

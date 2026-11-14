@@ -1,8 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controller/bookingController');
+const requireSuperadminSession = require('../controller/requireSuperadminSession');
 
-router.post('/:id/resend-email', require('../controller/requireSuperadminSession'), bookingController.resendConfirmationEmail);
+function requireSuperadminForManualPaid(req, res, next) {
+  const paymentStatus = req.body?.payment?.payment_status || req.body?.booking?.payment_status || req.body?.payment_status;
+  const paymentMethod = req.body?.payment?.payment_method || req.body?.booking?.payment_method || req.body?.payment_method;
+  const isPaid = ['paid', 'success', 'successful', 'completed', 'confirmed'].includes(String(paymentStatus || '').toLowerCase());
+  const isPhonePe = String(paymentMethod || '').toLowerCase() === 'phonepe';
+
+  if (isPaid && !isPhonePe) return requireSuperadminSession(req, res, next);
+  return next();
+}
+
+router.post('/:id/resend-email', requireSuperadminSession, bookingController.resendConfirmationEmail);
 
 // GET /api/bookings/check - Check booking by reference
 router.get('/check', bookingController.checkBookingByReference);
@@ -14,7 +25,7 @@ router.get('/all', bookingController.getAllBookingsComplete);
 router.get('/', bookingController.getAllBookings);
 
 // POST /api/bookings - Create a new booking with parent, children, and games/slots
-router.post('/', bookingController.createBooking);
+router.post('/', requireSuperadminForManualPaid, bookingController.createBooking);
 
 // GET /api/bookings/user/:userId - Get user profile with all booking details
 router.get('/user/:userId', bookingController.getUserProfileWithBookings);

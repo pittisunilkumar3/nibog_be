@@ -8,6 +8,7 @@ function normalizePaymentStatus(status) {
 }
 
 const BookingModel = require('../model/bookingModel');
+const { verifyPhonePePayment } = require('./phonePeVerification');
 const EmailSettingsModel = require('../model/emailSettingsModel');
 const { promisePool } = require('../config/config');
 const QRCode = require('qrcode');
@@ -61,6 +62,7 @@ exports.createBooking = async (req, res) => {
         email: req.body.parent.email,
         phone: req.body.parent.additional_phone || req.body.parent.phone,
         event_id: req.body.booking.event_id,
+        booking_ref: req.body.booking_ref || req.body.booking.booking_ref,
         status: normalizePaymentStatus(req.body.booking.payment_status) === 'Paid' ? 'Confirmed' : 'Pending',
         total_amount: req.body.total_amount || req.body.booking.total_amount || 0,
         payment_method: req.body.booking.payment_method,
@@ -76,6 +78,7 @@ exports.createBooking = async (req, res) => {
     }
     // Handle payment object structure from admin manual bookings
     if (req.body.payment && typeof req.body.payment === "object") {
+      bookingData.payment = req.body.payment;
       bookingData.payment_status = normalizePaymentStatus(req.body.payment.payment_status);
       bookingData.payment_method = req.body.payment.payment_method;
       bookingData.transaction_id = req.body.payment.transaction_id;
@@ -85,7 +88,45 @@ exports.createBooking = async (req, res) => {
         bookingData.status = "Confirmed";
       }
     }
+    const bookingRef = bookingData.booking_ref;
+    const isPhonePe = String(bookingData.payment_method || '').toLowerCase() === 'phonepe';
 
+    if (bookingData.payment_status === 'Paid' && isPhonePe) {
+      if (!bookingRef) {
+        return res.status(400).json({ error: 'booking_ref is required for PhonePe confirmation' });
+      }
+
+      const verified = await verifyPhonePePayment(bookingRef);
+      const result = await BookingModel.completePhonePeBooking({
+        booking_ref: bookingRef,
+        merchantTransactionId: verified.merchantTransactionId,
+        transactionId: verified.transactionId,
+        amountPaise: verified.amountPaise,
+        gatewayResponse: verified.gatewayResponse
+      });
+      const bookingDetails = await BookingModel.getBookingById(result.booking_id);
+
+      if (result.transitioned && bookingDetails) {
+        const emailRequestData = {
+          ...bookingData,
+          parent_name: bookingData.parent_name || bookingDetails.parent?.name,
+          email: bookingData.email || bookingDetails.parent?.email,
+          phone: bookingData.phone || bookingDetails.parent?.phone
+        };
+        sendBookingEmails(bookingDetails, emailRequestData).catch(err => {
+          console.error('Failed to send booking emails:', err.message);
+        });
+      }
+
+      return res.status(200).json({
+        message: result.transitioned ? 'Booking confirmed successfully' : 'Booking already confirmed',
+        booking_id: result.booking_id,
+        booking_ref: result.booking_ref,
+        payment_id: result.payment_id || null,
+        total_amount: result.total_amount,
+        already_completed: !result.transitioned
+      });
+    }
 
     // Validate required fields
     if (!bookingData.children || bookingData.children.length === 0) {
@@ -126,6 +167,14 @@ exports.createBooking = async (req, res) => {
       }
     }
 
+    if (bookingData.payment_status === 'Paid') {
+      bookingData.status = 'Confirmed';
+    } else {
+      bookingData.payment_status = 'Pending';
+      bookingData.status = 'Pending';
+      if (bookingData.payment) bookingData.payment.payment_status = 'Pending';
+    }
+
     const result = await BookingModel.createBooking(bookingData);
 
     // Get complete booking details for email
@@ -136,20 +185,21 @@ exports.createBooking = async (req, res) => {
       bookingDetails.booking_id = bookingDetails.id || result.booking_id;
     }
 
-    // Send emails asynchronously (don't wait for them to complete)
-    sendBookingEmails(bookingDetails, bookingData).catch(err => {
-      console.error('Failed to send booking emails:', err.message);
-      console.error('Error details:', err);
-    });
+    if (bookingData.payment_status === 'Paid' && bookingDetails) {
+      sendBookingEmails(bookingDetails, bookingData).catch(err => {
+        console.error('Failed to send booking emails:', err.message);
+      });
+    }
 
     res.status(201).json({
       message: 'Booking created successfully',
       booking_id: result.booking_id,
-      booking_ref: bookingDetails.booking_ref,
-      payment_id: result.payment_id || null
+      booking_ref: bookingDetails?.booking_ref || result.booking_ref,
+      payment_id: result.payment_id || null,
+      total_amount: Number(bookingDetails?.total_amount ?? bookingData.total_amount)
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message, code: err.code || 'BOOKING_ERROR' });
   }
 };
 
