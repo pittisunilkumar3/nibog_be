@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../controller/paymentController');
 const { authenticateEmployee } = require('../controller/authMiddleware');
+const requireSuperadminSession = require('../controller/requireSuperadminSession');
 
-// Public routes (for PhonePe callbacks, etc.)
-// POST /api/payments - Create payment
-router.post('/', paymentController.createPayment);
+// POST /api/payments - Create a manual payment
+router.post('/', requireSuperadminSession, paymentController.createPayment);
 
 // POST /api/payments/notify-failed - payment failed / retry email
 router.post('/notify-failed', paymentController.notifyPaymentFailed);
@@ -21,12 +21,12 @@ router.get('/analytics', authenticateEmployee, paymentController.getPaymentAnaly
 router.get('/:id', authenticateEmployee, paymentController.getPaymentById);
 
 // PATCH /api/payments/:id - Update payment
-router.patch('/:id', authenticateEmployee, paymentController.updatePayment);
+router.patch('/:id', requireSuperadminSession, paymentController.updatePayment);
 
 // PATCH /api/payments/:id/status - Update payment status (refunds, etc.)
-router.patch('/:id/status', authenticateEmployee, paymentController.updatePaymentStatus);
+router.patch('/:id/status', requireSuperadminSession, paymentController.updatePaymentStatus);
 
 // DELETE /api/payments/:id - Delete payment
-router.delete('/:id', authenticateEmployee, paymentController.deletePayment);
+router.delete('/:id', requireSuperadminSession, paymentController.deletePayment);
 
 module.exports = router;

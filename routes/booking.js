@@ -1,8 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controller/bookingController');
+const requireSuperadminSession = require('../controller/requireSuperadminSession');
+const { normalizeBookingPaymentInput } = require('../controller/bookingPaymentInput');
 
-router.post('/:id/resend-email', require('../controller/requireSuperadminSession'), bookingController.resendConfirmationEmail);
+function requireSuperadminForManualPaid(req, res, next) {
+  try {
+    const paymentInput = normalizeBookingPaymentInput(req.body);
+    req.paymentInput = paymentInput;
+    if (paymentInput.isPaid && !paymentInput.isPhonePe) return requireSuperadminSession(req, res, next);
+    return next();
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ error: error.message, code: error.code || 'INVALID_PAYMENT_INPUT' });
+  }
+}
+
+router.post('/:id/resend-email', requireSuperadminSession, bookingController.resendConfirmationEmail);
 
 // GET /api/bookings/check - Check booking by reference
 router.get('/check', bookingController.checkBookingByReference);
@@ -14,7 +27,7 @@ router.get('/all', bookingController.getAllBookingsComplete);
 router.get('/', bookingController.getAllBookings);
 
 // POST /api/bookings - Create a new booking with parent, children, and games/slots
-router.post('/', bookingController.createBooking);
+router.post('/', requireSuperadminForManualPaid, bookingController.createBooking);
 
 // GET /api/bookings/user/:userId - Get user profile with all booking details
 router.get('/user/:userId', bookingController.getUserProfileWithBookings);
@@ -29,7 +42,7 @@ router.post('/ticket/checkin/:id', bookingController.checkinTicket);
 router.get('/:id', bookingController.getBookingById);
 
 // PATCH /api/bookings/:id - Edit a booking
-router.patch('/:id', bookingController.updateBooking);
+router.patch('/:id', requireSuperadminSession, bookingController.updateBooking);
 
 // DELETE /api/bookings/:id - Delete a booking
 router.delete('/:id', bookingController.deleteBooking);
