@@ -1,3 +1,4 @@
+// Fixtures are synthetic; never a real key or customer identifier.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { verifyPhonePePayment } = require('../controller/phonePeVerification');
